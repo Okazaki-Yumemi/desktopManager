@@ -1,3 +1,17 @@
+## 2026-09-06 — Round 17: M9 性能测量切片（0/50/200/500 项）
+
+- 新增 `src-tauri/src/perf_measure.rs` 测量基建（非 CI：
+  `cargo test m9_ -- --ignored --nocapture`，best-of-N，debug 构建取
+  上界）；结果转录进 docs/PERFORMANCE.md（MEASURED）。
+- 结论：500 项时扫描 0.54 ms、首次同步 9.01 ms、重复同步
+  6.74 ms、列表 0.73 ms、搜索 0.19 ms、含 D22 quick_check 的打开
+  1.84–2.84 ms —— 全部 ≤ 10 ms，按章程“只优化测量证明有必
+  要的”，本轮不做任何优化。
+- 未测（需实机会话）：启动到可用、空闲 CPU/RAM（含
+  WebView2 全家桶）、图标提取、fs 事件→UI 延迟、安装包体积。
+- **下一步：** 继续铺遗留功能（ICS 导出、布局预设、
+  性能模式）；之后 M10/M11（release 构建 + 安装包）。
+
 ## 2026-09-06 — Round 16: M8 离线可靠性切片（损坏 DB 隔离恢复 + 规模测试）
 
 - `storage::Database::open_with_recovery`（M8 P0）：检测两类损坏

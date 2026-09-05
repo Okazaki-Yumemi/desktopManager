@@ -10,6 +10,8 @@ mod app;
 mod commands;
 mod desktop;
 mod storage;
+#[cfg(test)]
+mod perf_measure;
 
 use tauri::{Manager, WindowEvent};
 
