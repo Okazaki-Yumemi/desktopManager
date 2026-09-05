@@ -1,0 +1,11 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
+*.log
+.DS_Store
+Thumbs.db
+
+probe/shell_probe/target/
+probe/shell_probe/*.json
+${APPDATA}/

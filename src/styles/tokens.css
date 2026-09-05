@@ -1,0 +1,67 @@
+/*
+ * Design tokens — the single source of truth for the visual language.
+ * Components must consume tokens, never hard-coded colors/sizes.
+ */
+
+:root {
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, monospace;
+
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --font-size-s: 12px;
+  --font-size-m: 13.5px;
+  --font-size-l: 16px;
+  --font-size-xl: 22px;
+
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-hover: #edeff2;
+  --surface-active: #e4e7eb;
+  --text-primary: #1a1c1e;
+  --text-secondary: #5d6167;
+  --text-tertiary: #8a8f98;
+  --accent: #2f6fd0;
+  --accent-soft: rgb(47 111 208 / 0.1);
+  --border: #e1e3e8;
+  --border-strong: #cfd3da;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.04);
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --error: #c62828;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1a1b1e;
+  --surface: #232529;
+  --surface-hover: #2b2e33;
+  --surface-active: #33373d;
+  --text-primary: #e4e6e9;
+  --text-secondary: #a2a6ad;
+  --text-tertiary: #6f747c;
+  --accent: #7aaef5;
+  --accent-soft: rgb(122 174 245 / 0.14);
+  --border: #313439;
+  --border-strong: #3f434a;
+  --shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  --ok: #4d9d68;
+  --warn: #d29a22;
+  --error: #e06c5b;
+}
