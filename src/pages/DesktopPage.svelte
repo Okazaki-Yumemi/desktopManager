@@ -680,17 +680,19 @@
             {col.name}
             <span class="count">{col.itemCount}</span>
           </button>
-          {#if activeSceneId !== null}
-            <button
-              type="button"
-              class="chip-del"
-              title="在当前场景隐藏这个集合"
-              onclick={() => void toggleCollectionVisible(col.id)}
-            >
-              <Eye size={12} />
-            </button>
-          {/if}
-          {#if activeCollectionId === col.id}
+          <!-- Hover reveals the actions; the active collection keeps them
+               always visible so rename/sub-collection are discoverable. -->
+          <span class="chip-actions" class:show={activeCollectionId === col.id}>
+            {#if activeSceneId !== null}
+              <button
+                type="button"
+                class="chip-del"
+                title="在当前场景隐藏这个集合"
+                onclick={() => void toggleCollectionVisible(col.id)}
+              >
+                <Eye size={12} />
+              </button>
+            {/if}
             <button
               type="button"
               class="chip-del"
@@ -715,7 +717,7 @@
             >
               <X size={12} />
             </button>
-          {/if}
+          </span>
         {/if}
       </span>
     {/each}
@@ -1036,12 +1038,27 @@
     color: var(--text-tertiary);
   }
 
+  .chip-actions {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .chip-wrap:hover .chip-actions,
+  .chip-wrap:focus-within .chip-actions,
+  .chip-actions.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .chip-del {
     display: inline-grid;
     place-items: center;
     width: 18px;
     height: 18px;
-    margin-left: -8px;
+    margin-left: 2px;
     border: none;
     border-radius: 999px;
     background: var(--surface-hover);
