@@ -54,15 +54,16 @@ pub fn desktop_open(state: State<'_, AppState>, path: String) -> AppResult<()> {
     open_with_shell(&path)
 }
 
-/// Shell icon for an indexed item as base64 RGBA (`None` → UI shows a glyph).
-/// Restricted to indexed paths, like `desktop_open`.
+/// Shell icon for an indexed or collection-held item as base64 RGBA
+/// (`None` → UI shows a glyph). Restricted to those two allow-lists.
 #[tauri::command]
 pub fn desktop_icon(state: State<'_, AppState>, path: String) -> AppResult<Option<IconPayloadDto>> {
-    let indexed = {
+    let allowed = {
         let mut db = lock_db(&state)?;
-        DesktopRepo::new(db.conn()).find_visible(&path)?
+        DesktopRepo::new(db.conn()).find_visible(&path)?.is_some()
+            || CollectionsRepo::new(db.conn()).holds_path(&path)?
     };
-    if indexed.is_none() {
+    if !allowed {
         return Ok(None);
     }
     Ok(extract_cached(&path)?.map(|p: IconPayload| IconPayloadDto {
@@ -136,4 +137,39 @@ pub fn collection_unassign(state: State<'_, AppState>, id: i64, path: String) ->
 pub fn collection_items(state: State<'_, AppState>, id: i64) -> AppResult<Vec<DesktopItem>> {
     let mut db = lock_db(&state)?;
     CollectionsRepo::new(db.conn()).items(id)
+}
+
+/// Assign any absolute path on disk to a collection (drag-in from Explorer).
+/// Desktop-indexed paths keep live metadata; the rest snapshot theirs.
+#[tauri::command]
+pub fn collection_assign_external(
+    state: State<'_, AppState>,
+    id: i64,
+    path: String,
+) -> AppResult<bool> {
+    let mut db = lock_db(&state)?;
+    let created = CollectionsRepo::new(db.conn()).assign_any(id, &path)?;
+    if created {
+        tracing::info!(collection_id = id, path, "item dragged into collection");
+    }
+    Ok(created)
+}
+
+/// Open an item stored in a collection. Allowed if the path is visible in
+/// the desktop index or is held by any collection — user-curated lists act
+/// as the allow-list (D14).
+#[tauri::command]
+pub fn collection_open(state: State<'_, AppState>, path: String) -> AppResult<()> {
+    let allowed = {
+        let mut db = lock_db(&state)?;
+        DesktopRepo::new(db.conn()).find_visible(&path)?.is_some()
+            || CollectionsRepo::new(db.conn()).holds_path(&path)?
+    };
+    if !allowed {
+        return Err(AppError::Other(
+            "拒绝打开：该项目不在桌面索引或任何集合中".into(),
+        ));
+    }
+    tracing::info!(path, "opening collection item");
+    open_with_shell(&path)
 }

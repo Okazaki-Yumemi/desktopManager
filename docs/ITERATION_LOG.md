@@ -1,4 +1,39 @@
 
+## 2026-09-05 — Round 6: external collection items + wallpaper + data purge
+
+User requests: (1) drag shortcuts from *outside* the desktop into collections,
+(2) custom wallpaper with opacity, (3) an app-data cleanup entry.
+
+**Shipped:**
+
+- Migration 0006: snapshot columns on `collection_items` (label/kind/ext/
+  size/modified) for paths that are not desktop-indexed. `assign_external`
+  snapshots fs metadata; `items()` LEFT JOINs `desktop_items` so indexed
+  paths keep live metadata and missing items stay hidden.
+- `collection_assign_external` (routes indexed→live, else snapshot),
+  `collection_open` (allow-list = visible index ∪ collection-held, D14),
+  `desktop_icon` widened to collection-held paths.
+- dragDropEnabled back to **true** (external drops need it) + hand-rolled
+  pointer drag for card→chip (6 px threshold, elementFromPoint hit-test,
+  floating ghost) — see D13. External drops: Tauri drag-drop events →
+  paths → active collection; overlay hint while hovering.
+- Wallpaper: file picker (HTML input, chunked base64 over IPC) →
+  `background_set` stores `background.img` in app data (mime sniffed, 15 MB
+  cap) → served via the `bg` custom protocol (`http://bg.localhost/...`) →
+  fixed layer in App.svelte with a persisted opacity slider (0–100%).
+- Settings 数据管理: 清空集合 / 重置全部数据 with two-step arm-confirm;
+  both back the DB up (WAL checkpoint + file copy) before deleting
+  (`purge_collections` / `purge_all`, unit-tested).
+
+**Verified live:** schema v6 migration, pointer drag assignment (count
+0 → 1, confirmed by user), wallpaper set through the real native file
+dialog + opacity 35%→80% live preview, purge buttons render. External
+drag-in from Explorer is wired but needs one manual user pass (OLE drags
+can't be synthesized).
+
+Tests: cargo test 24/24 (collections external snapshot + purge scopes),
+clippy 0, fmt clean; svelte-check 0, eslint 0, vitest 3/3, vite build ok.
+
 ## 2026-09-05 — Round 5: M2 virtual collections + drag assignment (M2 complete)
 
 **Shipped:**

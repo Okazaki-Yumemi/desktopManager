@@ -16,10 +16,12 @@ export interface ShortcutInfo {
 }
 
 /// One indexed desktop entry (mirrors storage::desktop_repo::DesktopItem).
+/// `source: "external"` marks snapshot items dragged into a collection from
+/// outside the desktop (no desktop index row).
 export interface DesktopItem {
   id: number;
   path: string;
-  source: "user_desktop" | "public_desktop";
+  source: "user_desktop" | "public_desktop" | "external";
   displayName: string;
   kind: "file" | "folder" | "shortcut";
   ext: string | null;

@@ -32,6 +32,11 @@ const MIGRATIONS: &[Migration] = &[
         "focus_sessions",
         include_str!("migrations/0005_focus_sessions.sql"),
     ),
+    (
+        6,
+        "collection_external_items",
+        include_str!("migrations/0006_collection_external_items.sql"),
+    ),
 ];
 
 fn latest_version() -> i64 {

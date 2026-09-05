@@ -132,6 +132,80 @@ impl<'a> CollectionsRepo<'a> {
         Ok(changed > 0)
     }
 
+    /// Assign any path that exists on disk (shortcut, file or folder) and
+    /// is not necessarily on the desktop. Snapshot metadata is stored on the
+    /// assignment row; if the path is (or later becomes) desktop-indexed,
+    /// live metadata wins at read time.
+    /// Returns whether a new assignment row was created.
+    pub fn assign_external(&self, collection_id: i64, item_path: &str) -> AppResult<bool> {
+        let path = std::path::Path::new(item_path);
+        if !path.is_absolute() {
+            return Err(AppError::Other("路径必须是绝对路径".into()));
+        }
+        let meta = std::fs::metadata(path)
+            .map_err(|_| AppError::Other(format!("路径不存在：{item_path}")))?;
+
+        let is_dir = meta.is_dir();
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase());
+        let kind = match (&is_dir, ext.as_deref()) {
+            (true, _) => "folder",
+            (false, Some("lnk") | Some("url")) => "shortcut",
+            (false, _) => "file",
+        };
+        let label = match (is_dir, ext.as_deref()) {
+            (false, Some("lnk") | Some("url")) => {
+                path.file_stem().and_then(|s| s.to_str()).map(str::to_owned)
+            }
+            _ => path.file_name().and_then(|s| s.to_str()).map(str::to_owned),
+        }
+        .ok_or_else(|| AppError::Other(format!("无法解析名称：{item_path}")))?;
+        let size_bytes = (!is_dir).then_some(meta.len() as i64);
+        let modified_at = meta
+            .modified()
+            .ok()
+            .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as i64);
+
+        let changed = self.conn.execute(
+            "INSERT OR IGNORE INTO collection_items
+                (collection_id, item_path, sort_order, added_at,
+                 label, kind, ext, size_bytes, modified_at)
+             VALUES (?1, ?2,
+                     (SELECT COALESCE(MAX(sort_order), -1) + 1
+                      FROM collection_items WHERE collection_id = ?1),
+                     ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                collection_id,
+                item_path,
+                now_millis(),
+                label,
+                kind,
+                ext,
+                size_bytes,
+                modified_at
+            ],
+        )?;
+        Ok(changed > 0)
+    }
+
+    /// Assign a path whatever it is: desktop-indexed paths go through the
+    /// live assignment, everything else through the external snapshot.
+    pub fn assign_any(&self, collection_id: i64, item_path: &str) -> AppResult<bool> {
+        let known: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM desktop_items WHERE path = ?1",
+            [item_path],
+            |row| row.get(0),
+        )?;
+        if known > 0 {
+            self.assign(collection_id, item_path)
+        } else {
+            self.assign_external(collection_id, item_path)
+        }
+    }
+
     /// Remove an assignment. Returns whether a row was removed.
     pub fn unassign(&self, collection_id: i64, item_path: &str) -> AppResult<bool> {
         let changed = self.conn.execute(
@@ -141,16 +215,34 @@ impl<'a> CollectionsRepo<'a> {
         Ok(changed > 0)
     }
 
-    /// Visible items of a collection, in assignment order. Items that have
-    /// disappeared from the desktop are filtered out (they stay indexed and
-    /// re-join automatically when they reappear).
+    /// Whether any collection currently holds this path (external-item
+    /// open/icon allow-list).
+    pub fn holds_path(&self, item_path: &str) -> AppResult<bool> {
+        let n: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM collection_items WHERE item_path = ?1",
+            [item_path],
+            |row| row.get(0),
+        )?;
+        Ok(n > 0)
+    }
+
+    /// Items of a collection, in assignment order: desktop-indexed paths use
+    /// live metadata (hidden while missing from disk), everything else uses
+    /// the snapshot stored at assignment time.
     pub fn items(&self, collection_id: i64) -> AppResult<Vec<DesktopItem>> {
         let mut stmt = self.conn.prepare(
-            "SELECT d.id, d.path, d.source, d.display_name, d.kind, d.ext,
-                    d.size_bytes, d.modified_at, d.missing
+            "SELECT COALESCE(d.id, -ci.id),
+                    COALESCE(d.path, ci.item_path),
+                    COALESCE(d.source, 'external'),
+                    COALESCE(d.display_name, ci.label),
+                    COALESCE(d.kind, ci.kind),
+                    COALESCE(d.ext, ci.ext),
+                    COALESCE(d.size_bytes, ci.size_bytes),
+                    COALESCE(d.modified_at, ci.modified_at),
+                    0
              FROM collection_items ci
-             JOIN desktop_items d ON d.path = ci.item_path
-             WHERE ci.collection_id = ?1 AND d.missing = 0
+             LEFT JOIN desktop_items d ON d.path = ci.item_path
+             WHERE ci.collection_id = ?1 AND (d.id IS NULL OR d.missing = 0)
              ORDER BY ci.sort_order, ci.added_at",
         )?;
         let rows = stmt.query_map([collection_id], map_item)?;
@@ -254,5 +346,55 @@ mod tests {
             .unwrap();
         assert_eq!(orphans, 0);
         assert!(repo(&mut db).delete(9999).is_err());
+    }
+
+    #[test]
+    fn external_assign_snapshots_metadata_and_missing_paths_reject() {
+        let mut db = Database::open_in_memory().unwrap();
+        let dir = std::env::temp_dir().join(format!("dm-coll-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let lnk = dir.join("我的工具.lnk");
+        std::fs::write(&lnk, b"stub").unwrap();
+
+        let c = repo(&mut db).create("工具", "#ff0000").unwrap();
+        assert!(repo(&mut db)
+            .assign_external(c.id, &lnk.to_string_lossy())
+            .unwrap());
+
+        let items = repo(&mut db).items(c.id).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].source, "external");
+        assert_eq!(items[0].display_name, "我的工具"); // stem, D10
+        assert_eq!(items[0].kind, "shortcut");
+        assert_eq!(items[0].ext.as_deref(), Some("lnk"));
+        assert_eq!(items[0].size_bytes, Some(4));
+
+        // Folder snapshot + relative/missing rejection.
+        let sub = dir.join("子目录");
+        std::fs::create_dir_all(&sub).unwrap();
+        assert!(repo(&mut db)
+            .assign_external(c.id, &sub.to_string_lossy())
+            .unwrap());
+        let items = repo(&mut db).items(c.id).unwrap();
+        assert_eq!(items[1].kind, "folder");
+        assert_eq!(items[1].display_name, "子目录");
+        assert_eq!(items[1].size_bytes, None);
+        assert!(repo(&mut db)
+            .assign_external(c.id, "C:\\definitely\\missing.lnk")
+            .is_err());
+        assert!(repo(&mut db)
+            .assign_external(c.id, "relative/path.lnk")
+            .is_err());
+
+        // Mixed: indexed path assigned normally keeps live metadata precedence.
+        seed_item(&mut db, "C:\\d\\a.pdf", "a.pdf");
+        assert!(repo(&mut db).assign(c.id, "C:\\d\\a.pdf").unwrap());
+        let items = repo(&mut db).items(c.id).unwrap();
+        assert_eq!(items[2].source, "user_desktop");
+
+        assert!(repo(&mut db).holds_path(&lnk.to_string_lossy()).unwrap());
+        assert!(!repo(&mut db).holds_path("C:\\not\\in\\any.lnk").unwrap());
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

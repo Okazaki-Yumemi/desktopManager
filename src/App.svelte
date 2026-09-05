@@ -14,17 +14,26 @@
     loadThemePreference,
     watchSystemTheme,
   } from "./stores/theme.svelte";
+  import { initWallpaper, wallpaper } from "./stores/wallpaper.svelte";
 
   const page = $derived(currentPage());
 
   onMount(() => {
     void loadThemePreference();
     void loadAccentPreference();
+    void initWallpaper();
     return watchSystemTheme();
   });
 </script>
 
 <div class="shell">
+  {#if wallpaper.active}
+    <div
+      class="bg-layer"
+      aria-hidden="true"
+      style={`background-image: url('${wallpaper.url}'); opacity: ${wallpaper.opacity};`}
+    ></div>
+  {/if}
   <Sidebar />
   <main class="content">
     {#if page === "today"}
@@ -46,11 +55,30 @@
 
 <style>
   .shell {
+    position: relative;
     display: flex;
     height: 100%;
   }
 
+  .bg-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+  }
+
+  /* Keep both shell columns above the wallpaper layer. */
+  .shell :global(.sidebar) {
+    position: relative;
+    z-index: 1;
+  }
+
   .content {
+    position: relative;
+    z-index: 1;
     flex: 1;
     min-width: 0;
     overflow-y: auto;

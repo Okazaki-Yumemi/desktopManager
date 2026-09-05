@@ -9,9 +9,15 @@
     type AccentPreference,
     type ThemePreference,
   } from "../stores/theme.svelte";
-  import { getShortcutInfo } from "../services/backend";
+  import { getShortcutInfo, purgeAppData } from "../services/backend";
   import type { ShortcutInfo } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
+  import {
+    clearWallpaper,
+    setWallpaperOpacity,
+    uploadWallpaper,
+    wallpaper,
+  } from "../stores/wallpaper.svelte";
 
   const options: ReadonlyArray<{ value: ThemePreference; label: string }> = [
     { value: "system", label: "跟随系统" },
@@ -66,6 +72,75 @@
       pushToast("error", `无法保存强调色：${String(err)}`);
     }
   }
+
+  // --- 自定义背景 ---------------------------------------------------------
+
+  let bgBusy = $state(false);
+  let fileInput = $state<HTMLInputElement | undefined>(undefined);
+
+  async function onPickImage(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    bgBusy = true;
+    try {
+      await uploadWallpaper(file);
+      pushToast("ok", "背景已更新");
+    } catch (err) {
+      pushToast("error", `设置背景失败：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      bgBusy = false;
+    }
+  }
+
+  function onOpacityInput(e: Event) {
+    wallpaper.opacity = Number((e.currentTarget as HTMLInputElement).value) / 100;
+  }
+
+  async function onOpacityCommit() {
+    try {
+      await setWallpaperOpacity(wallpaper.opacity);
+    } catch (err) {
+      pushToast("error", `保存透明度失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function onClearWallpaper() {
+    try {
+      await clearWallpaper();
+      pushToast("ok", "背景已清除");
+    } catch (err) {
+      pushToast("error", `清除失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // --- 数据管理（两步确认的破坏性操作） -------------------------------------
+
+  let purgeArm = $state<"collections" | "all" | null>(null);
+
+  function armPurge(kind: "collections" | "all") {
+    if (purgeArm !== kind) {
+      purgeArm = kind;
+      setTimeout(() => {
+        if (purgeArm === kind) purgeArm = null;
+      }, 5000);
+      return;
+    }
+    purgeArm = null;
+    purgeAppData(kind)
+      .then(() => {
+        if (kind === "all") {
+          pushToast("ok", "已重置，正在刷新界面…");
+          setTimeout(() => location.reload(), 800);
+        } else {
+          pushToast("ok", "集合数据已清空");
+        }
+      })
+      .catch((err: unknown) => {
+        pushToast("error", `清理失败：${err instanceof Error ? err.message : String(err)}`);
+      });
+  }
 </script>
 
 <div class="settings">
@@ -115,6 +190,48 @@
     </div>
   </section>
 
+  <section class="group" aria-label="自定义背景">
+    <h2>自定义背景</h2>
+    <div class="row">
+      <div class="row-text">
+        <span class="row-title">背景图片</span>
+        <span class="row-desc">保存在本机应用数据目录，不会上传或分享。</span>
+      </div>
+      <span class="btn-row">
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          hidden
+          bind:this={fileInput}
+          onchange={onPickImage}
+        />
+        <button type="button" class="btn" onclick={() => fileInput?.click()} disabled={bgBusy}>
+          选择图片…
+        </button>
+        {#if wallpaper.active}
+          <button type="button" class="btn" onclick={() => void onClearWallpaper()}>清除</button>
+        {/if}
+      </span>
+    </div>
+    {#if wallpaper.active}
+      <div class="row row-gap">
+        <div class="row-text">
+          <span class="row-title">不透明度</span>
+          <span class="row-desc">当前 {Math.round(wallpaper.opacity * 100)}%。</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={Math.round(wallpaper.opacity * 100)}
+          oninput={onOpacityInput}
+          onchange={() => void onOpacityCommit()}
+          aria-label="背景不透明度"
+        />
+      </div>
+    {/if}
+  </section>
+
   <section class="group" aria-label="全局快捷键">
     <h2>全局快捷键</h2>
     <div class="row">
@@ -138,6 +255,40 @@
         关闭占用程序后重启 DesktopManager 即可重试。
       </p>
     {/if}
+  </section>
+
+  <section class="group" aria-label="数据管理">
+    <h2>数据管理</h2>
+    <div class="row">
+      <div class="row-text">
+        <span class="row-title">清空集合</span>
+        <span class="row-desc">删除所有集合与分配记录，桌面索引保留。清除前自动备份数据库。</span>
+      </div>
+      <button
+        type="button"
+        class="danger"
+        class:armed={purgeArm === "collections"}
+        onclick={() => armPurge("collections")}
+      >
+        {purgeArm === "collections" ? "再点一次确认" : "清空"}
+      </button>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">重置全部数据</span>
+        <span class="row-desc">
+          集合、索引、设置、背景全部清空并恢复初始状态（自动备份；桌面上的真实文件不受影响）。
+        </span>
+      </div>
+      <button
+        type="button"
+        class="danger"
+        class:armed={purgeArm === "all"}
+        onclick={() => armPurge("all")}
+      >
+        {purgeArm === "all" ? "再点一次确认" : "重置"}
+      </button>
+    </div>
   </section>
 
   <p class="note">更多设置（自定义强调色、密度、性能模式）将随 M7 到来。</p>
@@ -285,5 +436,53 @@
 
   .mono {
     font-family: var(--font-mono);
+  }
+
+  .btn-row {
+    display: inline-flex;
+    gap: var(--space-2);
+  }
+
+  .btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  input[type="range"] {
+    width: 180px;
+    accent-color: var(--accent);
+  }
+
+  .danger {
+    padding: 6px 14px;
+    border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    color: var(--error);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .danger.armed {
+    background: var(--error);
+    border-color: var(--error);
+    color: #fff;
   }
 </style>

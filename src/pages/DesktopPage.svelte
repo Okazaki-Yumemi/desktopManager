@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { getCurrentWebview } from "@tauri-apps/api/webview";
   import {
     FileSymlink,
     FileText,
@@ -12,12 +13,14 @@
   } from "@lucide/svelte";
   import DesktopIcon from "../components/DesktopIcon.svelte";
   import {
+    assignExternalToCollection,
     assignToCollection,
     createCollection,
     deleteCollection,
     getCollectionItems,
     getDesktopItems,
     listCollections,
+    openCollectionItem,
     openDesktopItem,
     rescanDesktop,
     searchDesktopItems,
@@ -41,7 +44,13 @@
   let activeCollectionId = $state<number | null>(null);
   let creating = $state(false);
   let newName = $state("");
-  let dropTargetId = $state<number | null>(null);
+
+  // Pointer-based drag of an item card onto a collection chip (HTML5 DnD is
+  // not usable here: with Tauri's native drop handler enabled it never fires).
+  type DragState = { path: string; label: string; x: number; y: number; over: string | null };
+  let drag = $state<DragState | null>(null);
+  // True while files are dragged into the window from Explorer (Tauri event).
+  let fileDropHover = $state(false);
 
   const hasQuery = $derived(query.trim().length > 0);
   const activeCollection = $derived(
@@ -97,11 +106,24 @@
   onMount(() => {
     void loadCollections();
     // The backend pushes desktop:changed only when the index really changed.
-    const unlisten = listen(DESKTOP_CHANGED_EVENT, () => {
+    const unlistenP = listen(DESKTOP_CHANGED_EVENT, () => {
       void reload();
     });
+    // Files dragged in from Explorer carry real paths (Tauri native drop).
+    const dropP = getCurrentWebview().onDragDropEvent((event) => {
+      const payload = event.payload;
+      if (payload.type === "enter" || payload.type === "over") {
+        fileDropHover = true;
+      } else if (payload.type === "leave") {
+        fileDropHover = false;
+      } else if (payload.type === "drop") {
+        fileDropHover = false;
+        void assignExternal(payload.paths);
+      }
+    });
     return () => {
-      void unlisten.then((fn) => fn());
+      void unlistenP.then((fn) => fn());
+      void dropP.then((fn) => fn());
     };
   });
 
@@ -119,7 +141,8 @@
 
   async function open(item: DesktopItem) {
     try {
-      await openDesktopItem(item.path);
+      if (item.source === "external") await openCollectionItem(item.path);
+      else await openDesktopItem(item.path);
     } catch (err) {
       pushToast("error", `无法打开：${err instanceof Error ? err.message : String(err)}`);
     }
@@ -144,6 +167,26 @@
       await reload();
     } catch (err) {
       pushToast("error", `移出失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function assignExternal(paths: string[]) {
+    if (paths.length === 0) return;
+    if (activeCollectionId === null) {
+      pushToast("info", "请先点击选中一个集合，再把项目拖进来");
+      return;
+    }
+    let added = 0;
+    for (const path of paths) {
+      try {
+        if (await assignExternalToCollection(activeCollectionId, path)) added += 1;
+      } catch (err) {
+        pushToast("error", `加入失败：${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    if (added > 0) {
+      pushToast("ok", `已加入 ${added} 项到「${activeCollection?.name ?? "集合"}」`);
+      await reload();
     }
   }
 
@@ -174,24 +217,50 @@
     }
   }
 
-  function onDragStart(e: DragEvent, path: string) {
-    e.dataTransfer?.setData("text/plain", path);
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
-  }
+  // Pointer drag: threshold decides click vs drag; hit-test chips via
+  // elementFromPoint so the ghost can stay pointer-events: none.
+  function onItemPointerDown(e: PointerEvent, item: DesktopItem) {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
 
-  function onChipDrop(e: DragEvent, collectionId: number) {
-    e.preventDefault();
-    dropTargetId = null;
-    const path = e.dataTransfer?.getData("text/plain");
-    if (path) void assign(collectionId, path);
-  }
-
-  function focusOnMount(node: HTMLInputElement) {
-    node.focus();
+    const onMove = (ev: PointerEvent) => {
+      if (drag === null) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 6) return;
+        document.body.classList.add("dragging");
+        drag = { path: item.path, label: item.displayName, x: ev.clientX, y: ev.clientY, over: null };
+      } else {
+        drag.x = ev.clientX;
+        drag.y = ev.clientY;
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        drag.over = el?.closest("[data-drop-id]")?.getAttribute("data-drop-id") ?? null;
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      document.body.classList.remove("dragging");
+      const { path, over } = drag ?? { path: null, over: null };
+      drag = null;
+      if (path === null || over === null) return;
+      if (over === "remove") {
+        if (activeCollectionId !== null) void unassign(activeCollectionId, path);
+      } else {
+        void assign(Number(over), path);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
 
   function paletteFor(index: number): string {
     return PALETTE[index % PALETTE.length] ?? PALETTE[0]!;
+  }
+
+  function focusOnMount(node: HTMLInputElement) {
+    node.focus();
   }
 
   function subline(item: DesktopItem): string {
@@ -245,13 +314,10 @@
           type="button"
           class="chip"
           class:active={activeCollectionId === col.id}
-          class:drop={dropTargetId === col.id}
+          class:drop={drag?.over === String(col.id)}
           title="点击筛选；把项目拖到这里加入集合"
+          data-drop-id={String(col.id)}
           onclick={() => (activeCollectionId = col.id)}
-          ondragover={(e) => e.preventDefault()}
-          ondragenter={() => (dropTargetId = col.id)}
-          ondragleave={() => (dropTargetId = null)}
-          ondrop={(e) => onChipDrop(e, col.id)}
         >
           <span class="dot" style="background: {col.color}"></span>
           {col.name}
@@ -272,19 +338,9 @@
     {#if activeCollectionId !== null}
       <span
         class="chip remove-chip"
-        class:drop={dropTargetId === -1}
+        class:drop={drag?.over === "remove"}
         title="把项目拖到这里从集合移出"
-        role="button"
-        tabindex="0"
-        ondragover={(e) => e.preventDefault()}
-        ondragenter={() => (dropTargetId = -1)}
-        ondragleave={() => (dropTargetId = null)}
-        ondrop={(e) => {
-          e.preventDefault();
-          dropTargetId = null;
-          const path = e.dataTransfer?.getData("text/plain");
-          if (path && activeCollectionId !== null) void unassign(activeCollectionId, path);
-        }}
+        data-drop-id="remove"
       >
         移出集合
       </span>
@@ -341,7 +397,9 @@
     <div class="state"><p class="muted">没有找到与“{query.trim()}”匹配的项目</p></div>
   {:else if items.length === 0 && activeCollection}
     <div class="state">
-      <p class="muted">集合里还没有项目——把下面的项目拖到上方的「{activeCollection.name}」标签上</p>
+      <p class="muted">
+        集合里还没有项目——把下面的项目拖到「{activeCollection.name}」上，或从资源管理器把快捷方式拖进窗口
+      </p>
     </div>
   {:else if items.length === 0}
     <div class="state"><p class="muted">桌面上没有可见项目</p></div>
@@ -351,7 +409,6 @@
         <li>
           <button
             type="button"
-            draggable="true"
             aria-pressed={selectedPath === item.path}
             class="item"
             class:selected={selectedPath === item.path}
@@ -361,7 +418,7 @@
             onkeydown={(e) => {
               if (e.key === "Enter") void open(item);
             }}
-            ondragstart={(e) => onDragStart(e, item.path)}
+            onpointerdown={(e) => onItemPointerDown(e, item)}
           >
             <span class="icon kind-{item.kind}" aria-hidden="true">
               <DesktopIcon path={item.path} size={22}>
@@ -382,6 +439,8 @@
             </span>
             {#if item.source === "public_desktop"}
               <span class="badge">公用</span>
+            {:else if item.source === "external"}
+              <span class="badge">外部</span>
             {/if}
           </button>
         </li>
@@ -389,6 +448,17 @@
     </ul>
   {/if}
 </div>
+
+{#if drag}
+  <div class="drag-ghost" style="left: {drag.x}px; top: {drag.y}px;">{drag.label}</div>
+{/if}
+{#if fileDropHover}
+  <div class="drop-overlay">
+    {activeCollection
+      ? `松开，加入「${activeCollection.name}」`
+      : "先点击选中一个集合，再拖入快捷方式 / 文件"}
+  </div>
+{/if}
 
 <style>
   .desktop {
@@ -594,6 +664,7 @@
     border-radius: var(--radius-m);
     background: var(--surface);
     cursor: pointer;
+    user-select: none;
     transition: border-color var(--duration-fast) var(--ease-out),
       background var(--duration-fast) var(--ease-out);
   }
@@ -674,5 +745,42 @@
 
   .error-text {
     color: var(--error);
+  }
+
+  .drag-ghost {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none;
+    transform: translate(-50%, -130%);
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 4px 12px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: var(--font-size-s);
+    box-shadow: var(--shadow);
+  }
+
+  .drop-overlay {
+    position: fixed;
+    inset: 8px;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius-l);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+    pointer-events: none;
+  }
+
+  :global(body.dragging) {
+    cursor: grabbing;
+    user-select: none;
   }
 </style>

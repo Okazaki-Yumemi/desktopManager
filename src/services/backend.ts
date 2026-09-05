@@ -56,3 +56,29 @@ export async function unassignFromCollection(id: number, path: string): Promise<
 export async function getCollectionItems(id: number): Promise<DesktopItem[]> {
   return invoke<DesktopItem[]>("collection_items", { id });
 }
+
+/** Drag a path from outside the desktop (Explorer, Start Menu, …) in. */
+export async function assignExternalToCollection(
+  id: number,
+  path: string,
+): Promise<boolean> {
+  return invoke<boolean>("collection_assign_external", { id, path });
+}
+
+/** Open a collection-held item (indexed or external snapshot). */
+export async function openCollectionItem(path: string): Promise<void> {
+  await invoke("collection_open", { path });
+}
+
+export async function setWallpaper(dataB64: string, mime: string): Promise<void> {
+  await invoke("background_set", { dataB64, mime });
+}
+
+export async function clearWallpaper(): Promise<void> {
+  await invoke("background_clear");
+}
+
+/** kind: "collections" | "all". Backs the DB up before deleting. */
+export async function purgeAppData(kind: "collections" | "all"): Promise<void> {
+  await invoke("appdata_purge", { kind });
+}

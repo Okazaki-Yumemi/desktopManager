@@ -76,11 +76,17 @@ Next: **M3 — Shell Integration** on the verified LVM route.
   - **Virtual collections (WINDOWS_TESTED)**: collections bar (全部 / 集合
     chips / 新建集合 inline input / 移出集合 drop chip when filtered).
     Backend `collections_repo` + `collection_*` commands; assignment is
-    metadata-only with the same indexed-path allow-list as open/icon.
-    Create-via-UI, filter, item counts verified live; drag-drop assignment
-    verified manually by the user after the `dragDropEnabled: false` fix
-    (see D12 — Tauri's default OLE drop handler swallows in-page HTML5 DnD
-    on Windows/WebView2).
+    metadata-only. Pointer drag assignment verified manually by the user
+    (D13 — internal drag is pointer-based so external drops can keep the
+    native Tauri channel). **External items** (shortcuts anywhere on disk)
+    can be dragged in from Explorer; snapshot metadata on collection_items
+    (migration 0006), live metadata wins for indexed paths (D14).
+    External drag-in itself needs one manual user pass.
+  - **Wallpaper (WINDOWS_TESTED)**: Settings → 自定义背景, file picker →
+    base64 IPC → `background.img` in app data → `bg` custom protocol →
+    fixed layer with persisted opacity slider (35%→80% live verified).
+  - **Data management**: Settings → 数据管理, 清空集合 / 重置全部数据,
+    two-step confirm, automatic DB backup before purge (unit-tested).
 - Release build ~5.1 MB runs; MSI built. NSIS bundle failed once (network
   timeout downloading NSIS) — retry later.
 - **Windows shell probe** (`probe/shell_probe`): COM `IFolderView` route
@@ -125,6 +131,12 @@ Next: **M3 — Shell Integration** on the verified LVM route.
   **verified working by the user manually**. cargo test 21/21 (4 new
   collections-repo tests incl. allow-list rejection + idempotency), clippy 0,
   fmt clean; svelte-check 0, eslint 0, vitest 3/3, vite build ok.
+- 2026-09-05 (M2 extras, WINDOWS_TESTED): schema v6 migration clean. Pointer
+  drag assign (count 0→1, user-verified). Wallpaper set via native dialog
+  (qrcode jpg), opacity slider live 35→80, settings persisted (`ui.background`
+  in settings table, `background.img` in app data), bg layer renders under
+  content on all pages. cargo test 24/24, clippy 0, fmt clean; svelte-check 0,
+  eslint 0, vitest 3/3, vite build ok.
 - 2026-09-05 (M2 core, WINDOWS_TESTED): real `D:\Desktop` indexed (24 items,
   correct kinds, user+public sources). Watcher: create file → auto rescan
   `added=1` in <2 s; delete → `removed=1`, history row `missing=1`. Open via

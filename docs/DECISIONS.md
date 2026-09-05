@@ -1,15 +1,18 @@
+# Decisions
 
-## D12 — `dragDropEnabled: false` on the main window (accepted, 2026-09-05)
+ADR-style log. Newest at the bottom. Status: proposed / accepted / superseded.
 
-Tauri's default (`dragDropEnabled: true`) installs its own OLE drop target on
-WebView2 to expose external file drops as Tauri events — and in doing so it
-**swallows in-page HTML5 dragstart/drop**, which made collection drag
-assignment dead on Windows (verified: synthetic drags and the user's real
-drags both no-oped). We never consume external file drops, so the default
-only cost us the feature we do use. Flipped to `false`; HTML5 DnD now works.
-Trade-off: dragging files from Explorer onto the window does nothing (by
-design until some milestone asks for it).
-I code. tauri-plugin-sql exposes
+## D1 — Plain Svelte 5 + Vite, not SvelteKit (accepted, 2026-09-05)
+
+create-tauri-app's svelte-ts template now ships SvelteKit. SvelteKit brings
+SSR machinery, routing conventions and adapter layers a desktop shell does not
+need. Plain Svelte 5 + vite-plugin-svelte keeps the bundle tiny, startup fast,
+and matches the planned `pages/components/stores` structure. Runes-style
+stores (`.svelte.ts`) replace a store library.
+
+## D2 — rusqlite (bundled) in Rust, not tauri-plugin-sql (accepted, 2026-09-05)
+
+The charter forbids scattering SQL through UI code. tauri-plugin-sql exposes
 SQL to the JS side, which invites exactly that. rusqlite keeps queries behind
 Rust repositories; the `bundled` feature compiles SQLite so there is no system
 dependency, at the cost of some compile time.
@@ -88,3 +91,35 @@ watcher therefore only signals "something happened"; the scan re-reads both
 desktop folders (a few ms) and diffs inside one SQLite transaction. Costs a
 little more I/O, buys determinism: the index is always a pure function of the
 directory contents.
+
+## D12 — `dragDropEnabled: false` on the main window (accepted 2026-09-05; superseded by D13 the same day)
+
+Tauri's default (`dragDropEnabled: true`) installs its own OLE drop target on
+WebView2 to expose external file drops as Tauri events — and in doing so it
+swallows in-page HTML5 dragstart/drop, which made collection drag assignment
+dead on Windows. Flipped to `false` to fix internal drag (see D13 for the
+final resolution).
+
+## D13 — Internal drag is pointer-based; `dragDropEnabled` stays default (accepted, 2026-09-05)
+
+D12's flag is also Tauri's only channel for external drops with real paths,
+which the user explicitly wants (drag shortcuts from Explorer into a
+collection). Both at once is impossible with HTML5 DnD on WebView2, so:
+
+- `dragDropEnabled` is back to **true** → external file drops arrive as
+  Tauri drag-drop events with absolute paths.
+- Internal card→chip drag is a hand-rolled **pointer drag** (mousedown,
+  6 px threshold, `elementFromPoint` chip hit-test, floating ghost). It
+  never touches dragstart, so it works regardless of the native drop
+  handler and gives full visual control of the drag ghost.
+
+## D14 — Collections may hold external items; opening stays allow-listed (accepted, 2026-09-05)
+
+Users can drag shortcuts/files/folders that are **not on the desktop** into a
+collection. Non-indexed paths are stored with snapshot metadata (label, kind,
+ext, size, mtime) on the `collection_items` row (migration 0006); if the path
+is (or becomes) desktop-indexed, live metadata wins at read time. Opening:
+`collection_open` allows a path if it is visible in the desktop index **or**
+held by any collection — user-curated lists act as the allow-list, the same
+trust level as double-clicking in Explorer. `desktop_icon` was widened the
+same way so external items render real shell icons.

@@ -46,4 +46,91 @@ impl Database {
     pub fn conn(&mut self) -> &mut Connection {
         &mut self.conn
     }
+
+    /// Flush the WAL into the main file so a raw copy of the db file is
+    /// complete (used before backups and purges).
+    pub fn checkpoint(&self) -> AppResult<()> {
+        self.conn
+            .pragma_update(None, "wal_checkpoint", "TRUNCATE")?;
+        Ok(())
+    }
+
+    /// Delete every collection and its assignments (metadata the user can
+    /// rebuild; the desktop index stays).
+    pub fn purge_collections(&self) -> AppResult<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM collection_items", [])?;
+        tx.execute("DELETE FROM collections", [])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Reset all user data: collections, index and settings. Real desktop
+    /// files are never touched.
+    pub fn purge_all(&self) -> AppResult<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM collection_items", [])?;
+        tx.execute("DELETE FROM collections", [])?;
+        tx.execute("DELETE FROM desktop_items", [])?;
+        tx.execute("DELETE FROM settings", [])?;
+        tx.commit()?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::params;
+
+    fn count(db: &mut Database, table: &str) -> i64 {
+        db.conn()
+            .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
+    }
+
+    fn seed(db: &mut Database) {
+        db.conn()
+            .execute(
+                "INSERT INTO collections (name, color, sort_order, created_at, updated_at)
+                 VALUES ('c', '#ffffff', 0, 1, 1)",
+                [],
+            )
+            .unwrap();
+        db.conn()
+            .execute(
+                "INSERT INTO desktop_items (path, source, display_name, kind, first_seen_at,
+                                            last_seen_at)
+                 VALUES (?1, 'user_desktop', 'x', 'file', 1, 1)",
+                params!["C:\\x.txt"],
+            )
+            .unwrap();
+        db.conn()
+            .execute(
+                "INSERT INTO settings (key, value, updated_at) VALUES ('k', '{}', 1)",
+                [],
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn purge_collections_keeps_index_and_settings() {
+        let mut db = Database::open_in_memory().unwrap();
+        seed(&mut db);
+        db.purge_collections().unwrap();
+        assert_eq!(count(&mut db, "collections"), 0);
+        assert_eq!(count(&mut db, "collection_items"), 0);
+        assert_eq!(count(&mut db, "desktop_items"), 1);
+        assert_eq!(count(&mut db, "settings"), 1);
+    }
+
+    #[test]
+    fn purge_all_resets_user_data() {
+        let mut db = Database::open_in_memory().unwrap();
+        seed(&mut db);
+        db.purge_all().unwrap();
+        assert_eq!(count(&mut db, "collections"), 0);
+        assert_eq!(count(&mut db, "desktop_items"), 0);
+        assert_eq!(count(&mut db, "settings"), 0);
+    }
 }

@@ -38,6 +38,26 @@ pub fn run() {
                 tracing::info!("main window hidden to tray (close requested)");
             }
         })
+        // Serve the stored background image to the webview as
+        // http://bg.localhost/background.img (Windows maps `bg` there).
+        .register_uri_scheme_protocol("bg", |ctx, _request| {
+            let not_found = || {
+                tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .expect("static response")
+            };
+            let state = ctx.app_handle().state::<app::state::AppState>();
+            let file = state.data_dir.join("background.img");
+            let Ok(bytes) = std::fs::read(&file) else {
+                return not_found();
+            };
+            tauri::http::Response::builder()
+                .header("Content-Type", commands::background::sniff_mime(&bytes))
+                .header("Cache-Control", "no-store")
+                .body(bytes)
+                .unwrap_or_else(|_| not_found())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::app_info::app_info,
             commands::settings::settings_get,
@@ -55,6 +75,11 @@ pub fn run() {
             commands::desktop::collection_assign,
             commands::desktop::collection_unassign,
             commands::desktop::collection_items,
+            commands::desktop::collection_assign_external,
+            commands::desktop::collection_open,
+            commands::background::background_set,
+            commands::background::background_clear,
+            commands::background::appdata_purge,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {
