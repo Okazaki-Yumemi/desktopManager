@@ -328,4 +328,66 @@ mod tests {
         let repo = DesktopRepo::new(db.conn());
         assert_eq!(repo.find_visible("C:\\Windows\\notepad.exe").unwrap(), None);
     }
+
+    /// M8 scale slice: 500 files + 20 folders in a temp dir must scan, sync
+    /// and converge exactly like small desktops do. Time is printed for the
+    /// M9 measurement doc, only sanity-asserted here.
+    #[test]
+    fn sync_scan_handles_hundreds_of_files() {
+        let mut db = Database::open_in_memory().unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+
+        for i in 0..500 {
+            fs::write(tmp.path().join(format!("file{i:03}.txt")), "x").unwrap();
+        }
+        for i in 0..20 {
+            fs::create_dir(tmp.path().join(format!("folder{i}"))).unwrap();
+        }
+
+        let t0 = std::time::Instant::now();
+        let items = crate::desktop::scanner::scan_desktop_dir(tmp.path(), USER_DESKTOP);
+        let scan_ms = t0.elapsed().as_millis();
+        assert_eq!(items.len(), 520, "500 files + 20 folders must all be seen");
+
+        let t1 = std::time::Instant::now();
+        let out = DesktopRepo::new(db.conn()).sync_scan(&items).unwrap();
+        let sync_ms = t1.elapsed().as_millis();
+        assert_eq!(
+            out,
+            SyncOutcome {
+                added: 520,
+                updated: 0,
+                removed: 0,
+            }
+        );
+        assert_eq!(
+            sql_i64(&mut db, "SELECT COUNT(*) FROM desktop_items WHERE missing = 0"),
+            520
+        );
+
+        // Re-syncing the same reality changes nothing.
+        let out = DesktopRepo::new(db.conn()).sync_scan(&items).unwrap();
+        assert!(!out.changed());
+
+        // Half the files vanish; the index soft-removes them on the next
+        // sync (rows stay with missing = 1, visible count converges).
+        for i in 0..250 {
+            fs::remove_file(tmp.path().join(format!("file{i:03}.txt"))).unwrap();
+        }
+        let items = crate::desktop::scanner::scan_desktop_dir(tmp.path(), USER_DESKTOP);
+        let out = DesktopRepo::new(db.conn()).sync_scan(&items).unwrap();
+        assert_eq!(out.removed, 250);
+        assert_eq!(
+            sql_i64(&mut db, "SELECT COUNT(*) FROM desktop_items WHERE missing = 0"),
+            270
+        );
+        assert_eq!(
+            sql_i64(&mut db, "SELECT COUNT(*) FROM desktop_items WHERE missing = 1"),
+            250
+        );
+
+        eprintln!(
+            "M8 scale: 520 items — scan {scan_ms} ms, first sync {sync_ms} ms"
+        );
+    }
 }

@@ -240,3 +240,20 @@ same way so external items render real shell icons.
 - enumPref now writes through `setAttribute("data-" + attr, …)` in both
   load() and set(), always with the full literal attribute name. Rule for
   future code: never index `dataset` with a dashed name on the write path.
+
+## D22 — Corrupt database: quarantine and rebuild, never delete (2026-09-06, M8)
+
+- A corrupt SQLite file previously failed `AppState::init`, so the app would
+  not start at all and the only manual fix was deleting the data directory
+  — the opposite of the data-safety-first charter.
+- `Database::open_with_recovery` treats two signals as corruption:
+  SQLITE_NOTADB / SQLITE_CORRUPT from opening the file, and any
+  `PRAGMA quick_check` answer other than `ok` (this also catches damage the
+  header alone does not reveal). It renames the db and any -wal/-shm
+  siblings to `<name>.corrupt-<epoch-ms>` in place, then opens a fresh
+  database and continues startup. Renamed, never deleted — the user can
+  still try to salvage the bytes. Non-corruption failures keep failing
+  loudly instead of silently wiping state.
+- quick_check runs at every startup. On this app's DB size class the cost is
+  negligible (the M8 scale test syncs 520 items in 5 ms debug; quick_check
+  is the same order); M9 re-measures startup with it in the path.

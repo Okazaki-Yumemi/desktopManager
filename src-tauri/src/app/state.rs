@@ -32,7 +32,13 @@ impl AppState {
         app.manage(log_guard);
 
         let db_path = data_dir.join(DB_FILE_NAME);
-        let db = Database::open(&db_path)?;
+        let (db, recovery) = Database::open_with_recovery(&db_path)?;
+        if let Some(report) = recovery.as_ref() {
+            tracing::warn!(
+                quarantined = ?report.quarantined,
+                "corrupt database quarantined; started with a fresh database"
+            );
+        }
         tracing::info!(db = %db_path.display(), "database opened");
 
         let shortcut_status = Mutex::new(ShortcutStatus {

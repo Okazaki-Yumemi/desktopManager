@@ -1,3 +1,17 @@
+## 2026-09-06 — Round 16: M8 离线可靠性切片（损坏 DB 隔离恢复 + 规模测试）
+
+- `storage::Database::open_with_recovery`（M8 P0）：检测两类损坏
+  （打开即 SQLITE_NOTADB/CORRUPT；`PRAGMA quick_check` ≠ ok），把 db
+  与 -wal/-shm 兄弟文件改名隔离为 *.corrupt-<epoch-ms>（绝不删除，
+  用户可手工抢救），随后全新建库继续启动；非损坏类错误
+  维持响亮失败。AppState::init 已接入，隔离事件写入日志（D22）。
+- 规模测试：临时目录 500 文件 + 20 文件夹 → 扫描 0 ms /
+  首次入库 5 ms（debug 构建）；二次同步零变更；删除 250 个
+  文件后 soft-remove（missing=1）收敛，可见计数 270。
+- 测试：cargo test 48/48（新增 4 个）、clippy 0。真实应用的
+  损坏演练（故意写坏线上 DB）留给用户会话演示。
+- **下一步：** M9 性能测量（docs/PERFORMANCE.md，0/50/200/500 项）。
+
 ## 2026-09-06 — Round 15: 桌面图标大小设置（M7 遗留收尾）
 
 - 设置页「外观」新增 图标大小 行（小/中/大，ui.iconSize，走 enumPref 工厂 →

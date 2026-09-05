@@ -80,6 +80,15 @@ Adversarial testing: restart, corrupted DB, missing files, Explorer restart,
 multi-monitor, DPI 100–200%, hundreds of desktop files, sleep/wake, logout/
 login. Fix what breaks; no new features until P0/P1 are clear.
 
+> **Status: offline slice delivered 2026-09-06** — corrupted-DB first aid
+> (`Database::open_with_recovery`: NOTADB/quick_check detection, db + stale
+> -wal/-shm renamed to `*.corrupt-<epoch-ms>`, never deleted, fresh DB takes
+> over; D22; 3 unit tests) and a 500-file + 20-folder scale test (scan 0 ms,
+> first sync 5 ms, soft-remove convergence, debug build). Deferred (live
+> session needed): Explorer restart, multi-monitor, DPI scaling, sleep/wake,
+> logout/login, restart-under-load; a deliberate corruption drill on the real
+> DB is left for the user to watch.
+
 ## M9 — Performance
 
 Measure first (docs/PERFORMANCE.md scenarios: 0/50/200/500 desktop items).
