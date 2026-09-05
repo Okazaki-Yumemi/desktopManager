@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
+  CalendarEvent,
   Collection,
   DesktopItem,
   FocusDay,
@@ -13,6 +14,8 @@ import type {
   SceneLayout,
   ShortcutInfo,
   SyncOutcome,
+  Task,
+  TaskStatus,
 } from "../types/domain";
 
 export async function getAppInfo(): Promise<AppInfo> {
@@ -204,4 +207,115 @@ export async function listFocusSessions(day: string): Promise<FocusSession[]> {
 /** Per-day focus totals over the last N local days. */
 export async function getFocusSummary(days: number): Promise<FocusDay[]> {
   return invoke<FocusDay[]>("focus_summary", { days });
+}
+
+// --- Tasks & Calendar (M6) -------------------------------------------------
+
+export async function listTasks(): Promise<Task[]> {
+  return invoke<Task[]>("task_list");
+}
+
+export interface TaskFields {
+  notes?: string | null;
+  priority?: number;
+  dueAt?: number | null;
+  estimatedMinutes?: number | null;
+  tags?: string[];
+}
+
+export async function createTask(title: string, fields: TaskFields = {}): Promise<Task> {
+  return invoke<Task>("task_create", {
+    title,
+    notes: fields.notes ?? null,
+    priority: fields.priority ?? 0,
+    dueAt: fields.dueAt ?? null,
+    estimatedMinutes: fields.estimatedMinutes ?? null,
+    tags: fields.tags ?? [],
+  });
+}
+
+export async function updateTask(
+  id: number,
+  title: string,
+  fields: TaskFields = {},
+): Promise<void> {
+  await invoke("task_update", {
+    id,
+    title,
+    notes: fields.notes ?? null,
+    priority: fields.priority ?? 0,
+    dueAt: fields.dueAt ?? null,
+    estimatedMinutes: fields.estimatedMinutes ?? null,
+    tags: fields.tags ?? [],
+  });
+}
+
+export async function setTaskStatus(id: number, status: TaskStatus): Promise<Task> {
+  return invoke<Task>("task_set_status", { id, status });
+}
+
+export async function deleteTask(id: number): Promise<boolean> {
+  return invoke<boolean>("task_delete", { id });
+}
+
+/** Events overlapping [from, to), soonest first (all-day first). */
+export async function listEventsRange(from: number, to: number): Promise<CalendarEvent[]> {
+  return invoke<CalendarEvent[]>("event_list_range", { from, to });
+}
+
+export interface EventFields {
+  notes?: string | null;
+  color?: string | null;
+  taskId?: number | null;
+}
+
+export async function createEvent(
+  title: string,
+  startsAt: number,
+  endsAt: number,
+  allDay: boolean,
+  fields: EventFields = {},
+): Promise<CalendarEvent> {
+  return invoke<CalendarEvent>("event_create", {
+    title,
+    startsAt,
+    endsAt,
+    allDay,
+    notes: fields.notes ?? null,
+    color: fields.color ?? null,
+    taskId: fields.taskId ?? null,
+  });
+}
+
+export async function updateEvent(
+  id: number,
+  title: string,
+  startsAt: number,
+  endsAt: number,
+  allDay: boolean,
+  fields: EventFields = {},
+): Promise<void> {
+  await invoke("event_update", {
+    id,
+    title,
+    startsAt,
+    endsAt,
+    allDay,
+    notes: fields.notes ?? null,
+    color: fields.color ?? null,
+    taskId: fields.taskId ?? null,
+  });
+}
+
+/** Move an event's window (drag a time block). */
+export async function rescheduleEvent(
+  id: number,
+  startsAt: number,
+  endsAt: number,
+): Promise<void> {
+  await invoke("event_reschedule", { id, startsAt, endsAt });
+}
+
+export async function deleteEvent(id: number): Promise<boolean> {
+  return invoke<boolean>("event_delete", { id });
 }

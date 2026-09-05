@@ -9,11 +9,12 @@
     interruptFocus,
     listFocusSessions,
     listScenes,
+    listTasks,
     setFocusNote,
     setSetting,
     startFocus,
   } from "../services/backend";
-  import type { FocusDay, FocusKind, FocusSession, Scene } from "../types/domain";
+  import type { FocusDay, FocusKind, FocusSession, Scene, Task } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
 
   interface Preset {
@@ -44,6 +45,8 @@
   let customBreakMin = $state(5);
   let scenes = $state<Scene[]>([]);
   let boundSceneId = $state<number | null>(null);
+  let tasks = $state<Task[]>([]);
+  let boundTaskId = $state<number | null>(null);
   let noteDraft = $state("");
 
   let dayList = $state<FocusSession[]>([]);
@@ -164,6 +167,11 @@
     } catch {
       scenes = [];
     }
+    try {
+      tasks = (await listTasks()).filter((t) => t.status !== "done");
+    } catch {
+      tasks = [];
+    }
     // Recovery: a session row with status=running keeps counting from
     // started_at even if the app was closed or the page was reloaded.
     try {
@@ -172,6 +180,7 @@
         session = running;
         noteDraft = running.note ?? "";
         boundSceneId = running.sceneId;
+        boundTaskId = running.taskId;
         autoFinishing = false;
         phase = "focus";
       }
@@ -200,7 +209,7 @@
     busy = true;
     try {
       await setSetting("focus.preset", presetId);
-      const s = await startFocus(preset.kind, previewPlannedS, null, boundSceneId);
+      const s = await startFocus(preset.kind, previewPlannedS, boundTaskId, boundSceneId);
       session = s;
       noteDraft = "";
       autoFinishing = false;
@@ -341,6 +350,17 @@
           休息 <input type="number" min="0" max="60" bind:value={customBreakMin} /> 分钟
         </div>
       {/if}
+      {#if tasks.length > 0}
+        <label class="scene-row">
+          绑定任务
+          <select bind:value={boundTaskId}>
+            <option value={null}>不绑定</option>
+            {#each tasks as t (t.id)}
+              <option value={t.id}>{t.title}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
       {#if scenes.length > 0}
         <label class="scene-row">
           绑定场景
@@ -367,6 +387,9 @@
           <X size={14} /> 放弃
         </button>
       </div>
+      {#if session.taskId}
+        <div class="scene-bound">任务：{tasks.find((t) => t.id === session?.taskId)?.title ?? `#${session.taskId}`}</div>
+      {/if}
       {#if session.sceneId}
         <div class="scene-bound">
           场景：{scenes.find((s) => s.id === session?.sceneId)?.name ?? session.sceneId}

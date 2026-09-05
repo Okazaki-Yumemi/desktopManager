@@ -1,3 +1,4 @@
+pub mod calendar_repo;
 pub mod collections_repo;
 pub mod desktop_repo;
 pub mod focus_repo;
@@ -5,6 +6,7 @@ pub mod layout_repo;
 pub mod migrations;
 pub mod scenes_repo;
 pub mod settings_repo;
+pub mod tasks_repo;
 
 use std::path::Path;
 use std::time::Duration;

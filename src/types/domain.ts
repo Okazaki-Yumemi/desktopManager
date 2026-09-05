@@ -115,3 +115,37 @@ export interface FocusDay {
   sessions: number;
   interruptions: number;
 }
+
+// --- Tasks & Calendar (M6) -------------------------------------------------
+
+export type TaskStatus = "todo" | "doing" | "done";
+
+/// One task (mirrors storage::tasks_repo::Task). Priority 0–3 (0 = none).
+export interface Task {
+  id: number;
+  title: string;
+  notes: string | null;
+  status: TaskStatus;
+  priority: number;
+  dueAt: number | null;
+  estimatedMinutes: number | null;
+  tags: string[];
+  createdAt: number;
+  completedAt: number | null;
+  updatedAt: number;
+}
+
+/// One calendar event (mirrors storage::calendar_repo::CalendarEvent).
+/// Times are epoch ms; all-day events span their local day.
+export interface CalendarEvent {
+  id: number;
+  title: string;
+  startsAt: number;
+  endsAt: number;
+  allDay: boolean;
+  notes: string | null;
+  color: string | null;
+  taskId: number | null;
+  createdAt: number;
+  updatedAt: number;
+}

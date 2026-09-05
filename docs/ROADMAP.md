@@ -60,6 +60,8 @@ integration (soft filtering only — no app blocking in V1).
 
 ## M6 — Tasks + Calendar
 
+> **Status: core delivered 2026-09-05** — tasks (quick capture Ctrl+N, status cycling, priority/due/notes, status filters + search), week calendar (Monday-start grid, click-slot creation, all-day + timed events, task linking, day agenda), focus↔task binding. Deferred: month view, drag task → time block, ICS import/export (post-stabilization).
+
 Tasks (todo/doing/done, priority, due, estimate, tags, fast capture Ctrl+N),
 Agenda + Week views, then Month; drag task → calendar to create a time block;
 local persistence; ICS import/export after stabilization.

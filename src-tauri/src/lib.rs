@@ -98,6 +98,16 @@ pub fn run() {
             commands::focus::focus_note,
             commands::focus::focus_sessions,
             commands::focus::focus_summary,
+            commands::task::task_list,
+            commands::task::task_create,
+            commands::task::task_update,
+            commands::task::task_set_status,
+            commands::task::task_delete,
+            commands::calendar::event_list_range,
+            commands::calendar::event_create,
+            commands::calendar::event_update,
+            commands::calendar::event_reschedule,
+            commands::calendar::event_delete,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {
