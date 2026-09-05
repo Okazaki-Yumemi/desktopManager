@@ -64,11 +64,11 @@ export type AccentPreference = "ocean" | "violet" | "grass" | "amber" | "rose";
 export const ACCENT_SETTING_KEY = "ui.accent";
 
 export const ACCENT_PRESETS: ReadonlyArray<{ value: AccentPreference; label: string }> = [
-  { value: "ocean", label: "Ocean" },
-  { value: "violet", label: "Violet" },
-  { value: "grass", label: "Grass" },
-  { value: "amber", label: "Amber" },
-  { value: "rose", label: "Rose" },
+  { value: "ocean", label: "海蓝" },
+  { value: "violet", label: "紫罗兰" },
+  { value: "grass", label: "草绿" },
+  { value: "amber", label: "琥珀" },
+  { value: "rose", label: "玫红" },
 ];
 
 function isAccent(v: unknown): v is AccentPreference {

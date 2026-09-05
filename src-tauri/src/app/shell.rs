@@ -44,11 +44,11 @@ pub fn toggle_main_window<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Build the tray icon with its menu. Menu labels stay in English to match
-/// the UI language used elsewhere until a language decision lands (M10).
+/// Build the tray icon with its menu. UI language is Chinese by user decision
+/// (see docs/DECISIONS.md D9).
 pub fn create_tray<R: Runtime>(app: &tauri::App<R>) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Show DesktopManager", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
     TrayIconBuilder::with_id("main-tray")

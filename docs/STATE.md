@@ -31,53 +31,70 @@
 
 ## Current milestone
 
-M0 — Foundation and **M1 — Application Shell: COMPLETE and verified**.
-Next: **M2 — Desktop Index** (known-folder discovery, debounced watcher,
-indexing, open via shell; fallback-first, never move files).
+M0, M1 complete. **M2 — Desktop Index: core landed and WINDOWS_TESTED**
+(discovery, scanner, index, debounced watcher, open, search, Chinese UI).
+Still open inside M2: lazy bounded icon cache, virtual collections +
+drag/drop assignment. Next after that: **M3 — Shell Integration** on the
+verified LVM route.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
 - Tauri 2 project skeleton, plain Svelte 5 + Vite 7 + TS frontend (no SvelteKit).
 - Rust backend modules: `app/` (state, error, logging, shell/tray, shortcuts),
-  `storage/` (SQLite, migrations 1–5, settings repo), `commands/` (app_info,
-  settings get/set, shortcuts_get). cargo test 6/6, clippy clean, fmt clean.
-- Design tokens (light/dark + 5 accent presets), sidebar shell, Today page
-  (backend status card + quick-start card), Settings page (theme + accent
-  persistence round-trip through SQLite, verified via node:sqlite inspection).
-- **Tray (WINDOWS_TESTED)**: icon + menu (Show/Quit), left-click toggles the
-  window, close button hides to tray (process stays resident, log confirms).
+  `desktop/` (discovery, scanner, watcher, service, open), `storage/` (SQLite,
+  migrations 1–5, settings + desktop repos), `commands/` (app_info, settings,
+  shortcuts_get, desktop_list/search/rescan/open). cargo test 14/14, clippy
+  clean, fmt clean.
+- Design tokens (light/dark + 5 accent presets), sidebar shell, Today page,
+  Settings page (theme + accent persistence through SQLite).
+- **UI language: Chinese (D9, user decision)** — pages, tray menu, dates
+  (`2026年9月5日星期六`), durations.
+- **Tray (WINDOWS_TESTED)**: icon + menu (显示主窗口/退出), left-click toggles,
+  close hides to tray. Toggle uses GetForegroundWindow.
 - **Global shortcut (WINDOWS_TESTED)**: Alt+Shift+D registered at startup
-  (conflict → warning + status in Settings, startup never fails); toggles
-  show/hide verified live in both directions. Toggle uses
-  GetForegroundWindow (tao's is_focused missed WebView2 focus).
-- Release build `src-tauri/target/release/desktop-manager.exe` (≈5.1 MB) runs;
-  MSI installer built. NSIS bundle FAILED once (`timeout: global` while
-  downloading NSIS from github — network flake, retry later; MSI is fine).
-- **Windows shell probe** (`probe/shell_probe`): COM `IFolderView` route is
-  blocked on this build (ShellWindows collection empty — HRESULTs recorded in
-  docs/WINDOWS_SHELL_PROBE.md); the LVM/SysListView32 fallback **verified
-  end-to-end**: snapshot 27 icons → move one (write proof: verify 1 differ) →
-  restore → verify 27/27 exact → cleanup. No elevation, no file moves.
+  (conflict → warning + status in Settings, startup never fails).
+- **Desktop index (WINDOWS_TESTED 2026-09-05)**:
+  - Discovery: `FOLDERID_Desktop` → `D:\Desktop` (redirect-aware) +
+    `FOLDERID_PublicDesktop` → `C:\Users\Public\Desktop`.
+  - Initial sync indexed 24 items (15 files / 4 folders / 3 user shortcuts /
+    2 public shortcuts), classified correctly, in single-digit ms.
+  - Watcher (notify, non-recursive, 500 ms quiet debounce): created
+    `dm-probe-temp.txt` on the real desktop → auto rescan logged
+    `added=1` within ~2 s, DB row `missing=0`; deleted it → `removed=1`,
+    row kept as `missing=1` history. No polling, no manual refresh.
+  - Open: `desktop_open` allows only indexed paths; ShellExecuteW open of
+    `D:\Desktop\兴趣工作` (folder) verified live (also organically exercised
+    by the user double-clicking in the UI).
+  - Search: UI search box "pdf" → backend `desktop_search` → filtered to
+    8 PDFs, count line updates ("共 8 项"). LIKE wildcards escaped.
+  - Frontend 桌面 page: grid with kind icons, size/date sublines, 公用
+    badges, debounced search, refresh button, `desktop:changed` listener.
+- Release build ~5.1 MB runs; MSI built. NSIS bundle failed once (network
+  timeout downloading NSIS) — retry later.
+- **Windows shell probe** (`probe/shell_probe`): COM `IFolderView` route
+  blocked on this build (HRESULTs in WINDOWS_SHELL_PROBE.md); LVM fallback
+  verified end-to-end (snapshot → move → restore, 27/27, no elevation).
 
 ## What is broken / unfinished
 
+- M2 remainder: lazy bounded icon cache; virtual collections + drag/drop
+  assignment UI (schema `collections`/`collection_items` already exists).
 - NSIS installer bundle (network timeout — retry `corepack pnpm tauri build`).
-- Explorer-restart persistence (re-apply positions after killing explorer) —
-  deferred to a dedicated session; snapshot before killing explorer.
-- Programmatic auto-arrange/grid detection (currently read from the context
-  menu); needs a canary-move check before batch repositions (M3).
+- Explorer-restart persistence test — deferred to a dedicated session
+  (snapshot before killing explorer).
+- Programmatic auto-arrange/grid detection — canary-move check before batch
+  repositions (M3).
 - Command palette itself is M6; the global shortcut currently toggles the
-  window. Shortcut re-binding UI lands with the palette (M6/M7).
+  window.
 - No CI yet.
 
 ## Next actions
 
-1. Commit + push M1.
-2. M2: desktop index — enumerate `D:\Desktop` (user + public, redirect-aware)
-   via SHGetKnownFolderPath + walk; index into `desktop_items`; debounced
-   filesystem watcher; open item via shell; search. Fallback-first.
-3. M3: shell integration built on the verified LVM route (see
-   docs/WINDOWS_SHELL_PROBE.md + DECISIONS D8).
+1. M2 remainder: icon cache (lazy, bounded) → then collections + drag/drop.
+2. M3: shell integration on the verified LVM route (see
+   docs/WINDOWS_SHELL_PROBE.md + DECISIONS D8), incl. canary auto-arrange
+   detection.
+3. Retry NSIS bundle build.
 
 ## Known blockers
 
@@ -86,6 +103,13 @@ indexing, open via shell; fallback-first, never move files).
 
 ## Test results log (latest first)
 
+- 2026-09-05 (M2 core, WINDOWS_TESTED): real `D:\Desktop` indexed (24 items,
+  correct kinds, user+public sources). Watcher: create file → auto rescan
+  `added=1` in <2 s; delete → `removed=1`, history row `missing=1`. Open via
+  shell verified (folder `兴趣工作` opened; allow-list rejects non-indexed
+  paths by construction). UI search "pdf" → 8 hits live. Chinese UI verified
+  across pages incl. tray menu and date formats. cargo test 14/14, clippy 0
+  warn, fmt clean; vitest 3/3, svelte-check 0, eslint 0, vite build ok.
 - 2026-09-05 (M1, WINDOWS_TESTED): tray icon + menu live-verified (left-click
   toggle via Win+B → tray → Enter; close button hides to tray, process
   resident). Global shortcut Alt+Shift+D registered + toggles both directions;

@@ -5,6 +5,7 @@ use tauri::Manager;
 
 use super::error::{AppError, AppResult};
 use super::shortcuts::ShortcutStatus;
+use crate::desktop::discovery::DesktopSource;
 use crate::storage::Database;
 
 /// Central application state managed by Tauri.
@@ -14,10 +15,15 @@ pub struct AppState {
     pub log_dir: PathBuf,
     /// Outcome of global-shortcut registration at startup (conflict-safe).
     pub shortcut_status: Mutex<ShortcutStatus>,
+    /// Desktop folders to index, discovered once at startup.
+    pub desktop_sources: Vec<DesktopSource>,
 }
 
 impl AppState {
-    pub fn init<R: tauri::Runtime>(app: &tauri::App<R>) -> AppResult<Self> {
+    pub fn init<R: tauri::Runtime>(
+        app: &tauri::App<R>,
+        desktop_sources: Vec<DesktopSource>,
+    ) -> AppResult<Self> {
         let data_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&data_dir)?;
 
@@ -40,6 +46,7 @@ impl AppState {
             data_dir,
             log_dir,
             shortcut_status,
+            desktop_sources,
         })
     }
 

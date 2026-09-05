@@ -27,6 +27,9 @@ lazy bounded icon cache, open item via shell, search, virtual collections,
 drag/drop assignment, persistence. **Fallback-first: the app must be fully
 useful with zero shell integration.**
 
+Status: core landed + WINDOWS_TESTED 2026-09-05 (discovery, watcher, index,
+open, search, Chinese UI). Remaining: icon cache; collections + drag/drop.
+
 ## M3 — Windows Shell Integration
 
 Run the IFolderView probe for real; if viable: layout snapshot, position read,

@@ -4,7 +4,7 @@
   const active = $derived(currentPage());
 </script>
 
-<nav class="sidebar" aria-label="Main navigation">
+<nav class="sidebar" aria-label="主导航">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-name">DesktopManager</span>
@@ -24,7 +24,7 @@
       </li>
     {/each}
   </ul>
-  <div class="sidebar-footer">v0.1.0 · M0</div>
+  <div class="sidebar-footer">v0.1.0 · M2</div>
 </nav>
 
 <style>

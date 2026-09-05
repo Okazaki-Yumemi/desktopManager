@@ -28,67 +28,65 @@
     <h1>{dateLine}</h1>
   </header>
 
-  <section class="card" aria-label="Backend status">
+  <section class="card" aria-label="后端状态">
     <div class="card-title-row">
-      <h2>Backend status</h2>
+      <h2>后端状态</h2>
       {#if info}
-        <span class="pill ok">connected</span>
+        <span class="pill ok">已连接</span>
       {:else if loadError}
-        <span class="pill error">error</span>
+        <span class="pill error">出错</span>
       {:else}
-        <span class="pill">connecting…</span>
+        <span class="pill">连接中…</span>
       {/if}
     </div>
 
     {#if info}
       <dl class="kv">
         <div>
-          <dt>Version</dt>
+          <dt>版本</dt>
           <dd>{info.version}</dd>
         </div>
         <div>
-          <dt>Schema</dt>
+          <dt>数据库结构</dt>
           <dd>v{info.schemaVersion}</dd>
         </div>
         <div>
-          <dt>Platform</dt>
+          <dt>系统</dt>
           <dd>{info.os}</dd>
         </div>
         <div>
-          <dt>Data dir</dt>
+          <dt>数据目录</dt>
           <dd class="mono">{info.dataDir}</dd>
         </div>
         <div>
-          <dt>Database</dt>
+          <dt>数据库</dt>
           <dd class="mono">{info.dbPath}</dd>
         </div>
         <div>
-          <dt>Logs</dt>
+          <dt>日志</dt>
           <dd class="mono">{info.logDir}</dd>
         </div>
       </dl>
     {:else if loadError}
       <p class="error-text">
-        Could not reach the backend: {loadError}
+        无法连接后端：{loadError}
         <br />
-        (If you opened this page in a plain browser, run the app via
-        <code>pnpm tauri dev</code> instead.)
+        （如果你是在普通浏览器里打开的页面，请改用 <code>pnpm tauri dev</code> 启动应用。）
       </p>
     {:else}
-      <p class="muted">Contacting backend…</p>
+      <p class="muted">正在连接后端…</p>
     {/if}
   </section>
 
-  <section class="card" aria-label="Quick start">
+  <section class="card" aria-label="快速上手">
     <div class="card-title-row">
-      <h2>Quick start</h2>
+      <h2>快速上手</h2>
     </div>
     <p class="hint">
-      Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> anywhere in Windows to
-      show or hide this window. Closing the window only hides it to the tray —
-      use the tray menu to really quit.
+      在 Windows 任意位置按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> 即可显示或隐藏本窗口。
+      关闭窗口只是隐藏到托盘 —— 想彻底退出请使用托盘菜单。
     </p>
-    <p class="muted">Desktop organizing and the command palette arrive in upcoming milestones.</p>
+    <p class="muted">桌面整理与命令面板将在后续里程碑中到来。</p>
   </section>
 </div>
 

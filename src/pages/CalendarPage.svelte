@@ -3,7 +3,7 @@
 </script>
 
 <PagePlaceholder
-  title="Calendar"
-  milestone="Milestone M6"
-  description="A local-first calendar: agenda, week and month views. Tasks can be dragged onto the timeline as time blocks."
+  title="日历"
+  milestone="里程碑 M6"
+  description="本地优先的日历：日程、周视图与月视图。任务可以拖到时间轴上变成时间段。"
 />

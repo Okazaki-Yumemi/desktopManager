@@ -14,9 +14,9 @@
   import { pushToast } from "../stores/toast.svelte";
 
   const options: ReadonlyArray<{ value: ThemePreference; label: string }> = [
-    { value: "system", label: "System" },
-    { value: "light", label: "Light" },
-    { value: "dark", label: "Dark" },
+    { value: "system", label: "跟随系统" },
+    { value: "light", label: "浅色" },
+    { value: "dark", label: "深色" },
   ];
 
   // Swatch colors are fixed identities per accent, independent of the
@@ -55,7 +55,7 @@
     try {
       await setThemePreference(value);
     } catch (err) {
-      pushToast("error", `Could not save theme: ${String(err)}`);
+      pushToast("error", `无法保存主题：${String(err)}`);
     }
   }
 
@@ -63,20 +63,20 @@
     try {
       await setAccentPreference(value);
     } catch (err) {
-      pushToast("error", `Could not save accent: ${String(err)}`);
+      pushToast("error", `无法保存强调色：${String(err)}`);
     }
   }
 </script>
 
 <div class="settings">
-  <h1>Settings</h1>
+  <h1>设置</h1>
 
-  <section class="group" aria-label="Appearance">
-    <h2>Appearance</h2>
+  <section class="group" aria-label="外观">
+    <h2>外观</h2>
     <div class="row">
       <div class="row-text">
-        <span class="row-title">Theme</span>
-        <span class="row-desc">Persisted locally; “System” follows Windows automatically.</span>
+        <span class="row-title">主题</span>
+        <span class="row-desc">保存在本地；“跟随系统”会自动跟随 Windows。</span>
       </div>
       <div class="segmented" role="radiogroup" aria-label="Theme">
         {#each options as o (o.value)}
@@ -94,10 +94,10 @@
     </div>
     <div class="row row-gap">
       <div class="row-text">
-        <span class="row-title">Accent</span>
-        <span class="row-desc">Used for selection, highlights and primary actions.</span>
+        <span class="row-title">强调色</span>
+        <span class="row-desc">用于选中态、高亮与主要操作。</span>
       </div>
-      <div class="swatches" role="radiogroup" aria-label="Accent color">
+      <div class="swatches" role="radiogroup" aria-label="强调色">
         {#each ACCENT_PRESETS as a (a.value)}
           <button
             type="button"
@@ -115,33 +115,32 @@
     </div>
   </section>
 
-  <section class="group" aria-label="Global shortcut">
-    <h2>Global shortcut</h2>
+  <section class="group" aria-label="全局快捷键">
+    <h2>全局快捷键</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title mono">{shortcut ? formatBinding(shortcut.binding) : "…"}</span>
         <span class="row-desc">
-          Show / hide DesktopManager from anywhere. This will become the command
-          palette hotkey in a later milestone.
+          在任意界面显示 / 隐藏 DesktopManager。后续里程碑中它会升级为命令面板热键。
         </span>
       </div>
       {#if shortcut?.registered}
-        <span class="pill ok">registered</span>
+        <span class="pill ok">已注册</span>
       {:else if shortcut?.error}
-        <span class="pill error">conflict</span>
+        <span class="pill error">冲突</span>
       {:else}
-        <span class="pill">checking…</span>
+        <span class="pill">检测中…</span>
       {/if}
     </div>
     {#if shortcut?.error}
       <p class="error-text">
-        Another application already owns this key combination ({shortcut.error}).
-        Close that app and restart DesktopManager to try again.
+        该组合键已被其他程序占用（{shortcut.error}）。
+        关闭占用程序后重启 DesktopManager 即可重试。
       </p>
     {/if}
   </section>
 
-  <p class="note">More settings (accent editing, density, performance mode) arrive with M7.</p>
+  <p class="note">更多设置（自定义强调色、密度、性能模式）将随 M7 到来。</p>
 </div>
 
 <style>

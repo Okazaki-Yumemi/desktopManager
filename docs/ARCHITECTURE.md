@@ -14,22 +14,29 @@ Storage repositories (src-tauri/src/storage/)  ← the ONLY place SQL lives
 SQLite (single file in %APPDATA%\com.okazakiyumemi.desktopmanager)
 ```
 
-Windows-specific behavior (shell integration, known folders, icons) must be
-isolated in a desktop adapter module (`src-tauri/src/desktop/`, planned M2/M3),
-never scattered through commands or UI code. Business logic stays
-platform-neutral so the virtual organizer fallback always works.
+Windows-specific behavior (shell integration, known folders, icons) is
+isolated in the desktop adapter module (`src-tauri/src/desktop/`), never
+scattered through commands or UI code. Business logic stays platform-neutral
+so the virtual organizer fallback always works.
 
 ## Backend modules
 
-| Module       | Responsibility                                                        |
-| ------------ | --------------------------------------------------------------------- |
-| `app/state`  | AppState (DB handle, dirs), mutex access with poisoning recovery      |
-| `app/error`  | `AppError` (thiserror) — serializes to a message string over IPC      |
-| `app/logging`| tracing + daily rotated file sink, 14-day retention, stdout in debug  |
-| `storage`    | Database open (WAL, foreign keys, busy timeout), in-memory variant    |
+| Module        | Responsibility                                                        |
+| ------------- | --------------------------------------------------------------------- |
+| `app/state`   | AppState (DB handle, dirs, desktop sources), mutex access with poisoning recovery |
+| `app/error`   | `AppError` (thiserror) — serializes to a message string over IPC      |
+| `app/logging` | tracing + daily rotated file sink, 14-day retention, stdout in debug  |
+| `app/shell`   | Tray icon + show/hide/toggle of the main window                       |
+| `app/shortcuts` | Global shortcut registration (conflict-tolerant) + status           |
+| `desktop/discovery` | Known-folder desktop discovery (user + public, redirect-aware) |
+| `desktop/scanner`   | Top-level scan of a desktop folder into `ScannedItem`s         |
+| `desktop/watcher`   | Event-driven fs watcher, debounced rescans (no polling)        |
+| `desktop/service`   | Scan orchestration + `desktop:changed` event emission          |
+| `desktop/open`      | ShellExecuteW open (the only way items are launched)           |
+| `storage`     | Database open (WAL, foreign keys, busy timeout), in-memory variant    |
 | `storage/migrations` | Ordered SQL migrations, per-version transaction, pre-upgrade backup |
 | `storage/*_repo` | Repository structs; typed queries per aggregate                   |
-| `commands/`  | `#[tauri::command]` handlers; lock DB, call repo, map errors          |
+| `commands/`   | `#[tauri::command]` handlers; lock DB, call repo, map errors          |
 
 ## Frontend modules
 
@@ -70,8 +77,11 @@ Key decisions:
 
 ## Concurrency & performance notes
 
-- One SQLite connection behind a mutex is sufficient for M0; WAL + busy
-  timeout keep the UI process and background tasks from blocking fatally.
-  Revisit with a pool/read-connection if profiling justifies it.
-- Filesystem watching (M2) must be event-driven with debounce; no periodic
-  rescans anywhere.
+- One SQLite connection behind a mutex is sufficient; WAL + busy timeout keep
+  the UI process and background tasks from blocking fatally. Revisit with a
+  pool/read-connection if profiling justifies it.
+- Filesystem watching is event-driven with a 500 ms quiet-period debounce; no
+  periodic rescans anywhere. A rescan is a top-level `read_dir` of two folders
+  (single-digit milliseconds for typical desktops) inside one transaction —
+  cheaper and far less fragile than incremental event reconciliation. The UI
+  is told only when the index actually changed (`desktop:changed`).

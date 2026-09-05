@@ -1,54 +1,50 @@
-# Iteration Log
 
-One entry per work session: what was attempted, what changed, what was
-learned, what is next. Newest at the bottom.
+## 2026-09-05 — Round 3: M2 core (Desktop Index) + Chinese UI
 
-## 2026-09-05 — Round 1: M0 Foundation
+**Shipped:**
 
-**Environment findings (machine-specific, worth remembering):**
+- UI language switched to Chinese per user decision (D9): all pages, tray
+  menu (显示主窗口/退出), `zh-CN` dates/durations, `datetime` tests updated.
+- `desktop/` module:
+  - `discovery.rs` — SHGetKnownFolderPath (FOLDERID_Desktop → `D:\Desktop`
+    redirect honored + FOLDERID_PublicDesktop), env fallback, same-dir dedupe.
+  - `scanner.rs` — top-level scan; kind = folder / shortcut (.lnk/.url) /
+    file; hidden+system entries skipped (crate FILE_ATTRIBUTE_* constants);
+    display_name rule per D10.
+  - `desktop_repo.rs` — `sync_scan` upserts + `missing=1` history in ONE
+    transaction; `list_visible`, `search` (LIKE-escaped), `find_visible`.
+  - `watcher.rs` — notify recommended watcher (non-recursive), 500 ms
+    quiet-period debounce, self-reconnecting thread; rescan → emit
+    `desktop:changed` only on real change (D11).
+  - `open.rs` — ShellExecuteW; commands validate the path is currently
+    indexed before opening (webview cannot open arbitrary paths).
+- DesktopPage: real grid (lucide icons by kind, size/date, 公用 badge),
+  debounced backend search, refresh button, event-driven reload, Chinese
+  empty/error states.
+- `@lucide/svelte` added (first icon usage).
 
-- Remote repo was empty; bootstrapped from scratch on `main`.
-- Git Bash on this machine: MSYS `link` shadows MSVC `link.exe` (Rust builds
-  fail without PATH fix) → scripts/winbuild-env.sh.
-- `G:\nodejs\node_modules\npm\npmrc` has a broken `prefix=${APPDATA}\npm`;
-  global npm installs pollute the project dir. Use `corepack pnpm` only.
-- pnpm 11 reads build-script approvals from `pnpm-workspace.yaml`
-  (`allowBuilds`), not the package.json `pnpm` field.
-- Windows SDK was missing (MSVC couldn't link kernel32.lib). Per user
-  requirement it must not live on C: → junction
-  `C:\Program Files (x86)\Windows Kits\10` → `G:\WindowsSDK\10`
-  (see DECISIONS.md D4). One UAC elevation, approved by user.
+**Verified live (WINDOWS_TESTED):** 24 real items indexed (15/4/3 user +
+2 public); create/delete of `dm-probe-temp.txt` on `D:\Desktop` auto-synced
+(`added=1` then `removed=1`, history row kept); folder open via UI worked;
+UI search "pdf" → 8 hits; Chinese date "2026年9月5日星期六". cargo test 14/14
+(7 new: discovery, scanner ×3, repo ×3), clippy 0 warn, fmt clean; vitest
+3/3, svelte-check 0, eslint 0, vite build ok.
 
-**Built:**
+**Learned:**
 
-- Tauri 2 skeleton (plain Svelte 5 + Vite 7 + TS, no SvelteKit — D1).
-- Rust: app/{state,error,logging}, storage/{db,migrations 1–5,settings repo},
-  commands/{app_info,settings}. Tests for migrations + settings repo.
-- Frontend: tokens + base styles, sidebar shell, Today (backend status),
-  Settings (theme persisted via DB), placeholders for M2/M5/M6 pages.
-  vitest + svelte-check + eslint + vite build all green.
+- windows 0.61: `SHGetKnownFolderPath(&GUID, KNOWN_FOLDER_FLAG(0), None)
+  -> Result<PWSTR>` (3 args, returns the buffer; free with CoTaskMemFree);
+  constants are PascalCase `FOLDERID_Desktop`/`FOLDERID_PublicDesktop`.
+- `Connection::unchecked_transaction` allows `&self` repos (query_row's
+  `&mut self` on prepared statements needs the raw conn, not a `tx()`).
+- notify 8 API: `recommended_watcher(closure)` + `watch(path, NonRecursive)`;
+  only the signal matters — the rescan reads reality from disk.
+- Element `class:` directives are invalid on Svelte 5 components — pass
+  `class={cond ? "x" : ""}` to lucide icons instead.
 
-**Next:** verify cargo test/clippy once SDK install completes, release build +
-real smoke test, then IFolderView probe (docs/WINDOWS_SHELL_PROBE.md).
-
-## 2026-09-05 — Round 2: release build, shell probe executed, desktop restored
-
-**Built / verified:**
-
-- cargo test 6/6, clippy clean, fmt clean (src-tauri).
-- Release build ≈5.1 MB; MSI installer OK; NSIS bundle failed on a network
-  timeout downloading NSIS (retry later). Release smoke: app launches, DB
-  migrations to v5, theme/settings persistence verified via node:sqlite
-  inspection + log file (earlier "empty log" was a race with the async writer;
-  the "theme not persisting" was the user manually switching themes — both
-  false alarms).
-- **Shell probe executed on the real desktop** (results in
-  docs/WINDOWS_SHELL_PROBE.md):
-  - COM route blocked: `ShellWindows::Count()=0`, `FindWindowSW(SWC_DESKTOP)`
-    returns S_OK + NULL dispatch (4 variants). HRESULTs recorded.
-  - LVM fallback verified end-to-end: snapshot → move → verify(1 DIFF) →
-    restore → verify(27/27) → cleanup. No elevation, files untouched.
-  - Window chain: Progman > SHELLDLL_DefView (direct child) > SysListView32,
+**Next:** M2 remainder (lazy bounded icon cache; collections + drag/drop),
+then M3 shell integration on the LVM route.
+in: Progman > SHELLDLL_DefView (direct child) > SysListView32,
     owner = explorer.exe; LVM messages work cross-process via VirtualAllocEx /
     Read/WriteProcessMemory.
 

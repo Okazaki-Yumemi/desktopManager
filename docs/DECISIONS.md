@@ -69,3 +69,25 @@ SysListView32 LVM route end-to-end instead: read (`LVM_GETITEMCOUNT`,
 touching files. Runtime behavior: try COM first (cleaner, no cross-process
 memory when available), fall back to LVM; both behind one repository
 interface so M3/M4 code never branches on the backend.
+
+## D9 — UI language is Chinese (accepted, 2026-09-05)
+
+User decision ("用中文"). All UI copy, tray menu labels, dates and durations
+are Chinese (`zh-CN`); product/brand strings (DesktopManager) stay as-is.
+Backends logs and code comments remain English for greppability.
+
+## D10 — `display_name`: shortcuts show stem, everything else the real file name (accepted, 2026-09-05)
+
+The desktop never shows `.lnk`, so the indexer strips that suffix (and `.url`).
+Regular files keep their full name with extension: we do not replicate
+Explorer's per-type "hide known extensions" behavior, and an honest name is
+better for search. Revisit only if it bothers real use.
+
+## D11 — Watcher = debounce + full rescan, not incremental event replay (accepted, 2026-09-05)
+
+Reconciling raw `ReadDirectoryChangesW` event streams (rename pairs, lost
+events, buffer overflows) is fragile exactly where data safety matters. The
+watcher therefore only signals "something happened"; the scan re-reads both
+desktop folders (a few ms) and diffs inside one SQLite transaction. Costs a
+little more I/O, buys determinism: the index is always a pure function of the
+directory contents.

@@ -11,7 +11,7 @@
         type="button"
         class={`toast ${t.kind}`}
         onclick={() => dismissToast(t.id)}
-        title="Click to dismiss"
+        title="点击关闭"
       >
         {t.message}
       </button>

@@ -3,7 +3,7 @@
 </script>
 
 <PagePlaceholder
-  title="Tasks"
-  milestone="Milestone M6"
-  description="A lightweight task list. Ctrl+N, type, Enter — capture in seconds."
+  title="任务"
+  milestone="里程碑 M6"
+  description="轻量任务清单。Ctrl+N、输入、回车 —— 几秒内完成记录。"
 />

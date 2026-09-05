@@ -14,3 +14,22 @@ export interface ShortcutInfo {
   registered: boolean;
   error: string | null;
 }
+
+/// One indexed desktop entry (mirrors storage::desktop_repo::DesktopItem).
+export interface DesktopItem {
+  id: number;
+  path: string;
+  source: "user_desktop" | "public_desktop";
+  displayName: string;
+  kind: "file" | "folder" | "shortcut";
+  ext: string | null;
+  sizeBytes: number | null;
+  modifiedAt: number | null;
+  missing: boolean;
+}
+
+export interface SyncOutcome {
+  added: number;
+  updated: number;
+  removed: number;
+}
