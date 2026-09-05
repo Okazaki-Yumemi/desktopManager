@@ -33,6 +33,8 @@ open, search, icon cache, and virtual collections with drag/drop assignment
 
 ## M3 — Windows Shell Integration
 
+> **Status: core delivered 2026-09-05** — capture/apply via LVM + canary guard (D15), settings UI shipped; live read/canary verified. Deferred: Explorer-restart persistence re-apply.
+
 Run the IFolderView probe for real; if viable: layout snapshot, position read,
 position write, restore, "before layout" auto-backup, auto-arrange detection.
 Then (behind runtime detection + fallback) desktop group background host

@@ -9,5 +9,9 @@ pub mod scanner;
 pub mod service;
 pub mod watcher;
 
+/// Desktop icon layout via LVM messages (Windows-only shell surface).
+#[cfg(windows)]
+pub mod shell_layout;
+
 /// Event emitted to the frontend after the index actually changed.
 pub const DESKTOP_CHANGED_EVENT: &str = "desktop:changed";

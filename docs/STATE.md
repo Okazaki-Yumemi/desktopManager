@@ -34,7 +34,7 @@
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-Next: **M3 — Shell Integration** on the verified LVM route.
+M3 core **delivered 2026-09-05**: layout snapshot/restore via the verified LVM route + canary auto-arrange guard; live read/canary passed, UI awaiting one user pass. Next: **M4 — Scenes**. Deferred: Explorer-restart persistence re-apply.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -121,6 +121,7 @@ Next: **M3 — Shell Integration** on the verified LVM route.
 
 ## Test results log (latest first)
 
+- 2026-09-05 (M3 core, WINDOWS_TESTED): `cargo test -- --ignored` 2/2 on the real desktop — live LVM read + canary roundtrip. 27 unit tests, clippy/svelte-check/eslint 0. Settings UI restore pass pending user.
 - 2026-09-05 (M2 collections, WINDOWS_TESTED): collection created via inline
   input (toast, auto-switch to it, empty-state hint); filter chips with live
   item counts; 移出集合 drop chip appears only when a collection is active;

@@ -1,5 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppInfo, Collection, DesktopItem, ShortcutInfo, SyncOutcome } from "../types/domain";
+import type {
+  AppInfo,
+  Collection,
+  DesktopItem,
+  LayoutApplyReport,
+  LayoutSummary,
+  ShortcutInfo,
+  SyncOutcome,
+} from "../types/domain";
 
 export async function getAppInfo(): Promise<AppInfo> {
   return invoke<AppInfo>("app_info");
@@ -81,4 +89,24 @@ export async function clearWallpaper(): Promise<void> {
 /** kind: "collections" | "all". Backs the DB up before deleting. */
 export async function purgeAppData(kind: "collections" | "all"): Promise<void> {
   await invoke("appdata_purge", { kind });
+}
+
+/** Capture the live desktop icon layout through the shell (LVM route). */
+export async function captureLayout(
+  name: string,
+): Promise<{ id: number; name: string; itemCount: number }> {
+  return invoke("layout_capture", { name });
+}
+
+export async function listLayouts(): Promise<LayoutSummary[]> {
+  return invoke<LayoutSummary[]>("layout_list");
+}
+
+/** Restore a saved layout; refused when auto-arrange is detected. */
+export async function applyLayout(id: number): Promise<LayoutApplyReport> {
+  return invoke<LayoutApplyReport>("layout_apply", { id });
+}
+
+export async function deleteLayout(id: number): Promise<boolean> {
+  return invoke<boolean>("layout_delete", { id });
 }

@@ -43,3 +43,18 @@ export interface Collection {
   color: string;
   itemCount: number;
 }
+
+/// A saved desktop icon-layout snapshot (storage::layout_repo::LayoutSummary).
+export interface LayoutSummary {
+  id: number;
+  name: string;
+  createdAt: number;
+  itemCount: number;
+}
+
+/// Result of applying a layout (commands::layout ApplyReport).
+export interface LayoutApplyReport {
+  applied: number;
+  missing: number;
+  diverged: number;
+}

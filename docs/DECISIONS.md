@@ -123,3 +123,25 @@ is (or becomes) desktop-indexed, live metadata wins at read time. Opening:
 held by any collection — user-curated lists act as the allow-list, the same
 trust level as double-clicking in Explorer. `desktop_icon` was widened the
 same way so external items render real shell icons.
+
+## D15 — Desktop icon layout via LVM + canary guard (2026-09-05, M3)
+
+- The probe-verified route (D7, docs/WINDOWS_SHELL_PROBE.md) is now the product
+  path: `desktop::shell_layout` ports the probe's LVM implementation
+  (Progman/WorkerW → SHELLDLL_DefView → SysListView32, remote buffers in
+  explorer.exe). The COM/IFolderView route stays out of the app — blocked on
+  this machine (probe route 1).
+- Stored positions are ListView **client coordinates, verbatim** (probe's
+  coordinate-space notes: cross-process MapWindowPoints is unreliable). A
+  restore writes them back unchanged; re-anchoring across monitor-layout
+  changes remains open.
+- Matching is by listview caption; duplicate captions are consumed in order;
+  icons absent from the desktop are counted as missing, never an error.
+- **Canary guard**: before any batch restore, icon 0 is moved +150/+150 px and
+  read back. A no-op read-back means the shell overrides writes (自动排列图标)
+  and the restore is refused outright. The canary always attempts to return to
+  its original spot first. Align-to-grid snapping counts as accepted (a grid
+  move is not a no-op).
+- Honest status: read + canary verified live on this machine (ignored tests,
+  `cargo test -- --ignored` 2/2); the settings UI and a real user restore pass
+  are still pending one manual run.

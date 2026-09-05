@@ -1,4 +1,16 @@
 
+## 2026-09-05 — Round 7: M3 桌面布局快照/恢复（LVM 通道）
+
+- 迁移 0007：`layout_snapshots.name`（唯一索引）；0002 建的表首次接上产品功能。
+- `desktop::shell_layout`：移植探针验证过的 LVM 实现（Progman/WorkerW 链、
+  explorer.exe 远程缓冲、中文标题往返）；`read_layout` / `canary_check` /
+  `apply_layout`（按标题匹配、重复名按序消费、缺失计数、逐项回读校验）。
+- 恢复前金丝雀探测：+150/+150 试写，读回无变化即判定自动排列并整体拒绝；
+  试写后总是先复位。
+- 命令 layout_capture/list/apply/delete + 设置页「桌面布局快照」区（保存/应用/删除）。
+- 验证：cargo test 27 单测 + `-- --ignored` 真机 2/2（实读桌面 + 金丝雀往返）、
+  clippy 0、svelte-check 0、eslint 0。UI 实机走查与用户恢复实测待办。
+
 ## 2026-09-05 — Round 6: external collection items + wallpaper + data purge
 
 User requests: (1) drag shortcuts from *outside* the desktop into collections,

@@ -9,8 +9,15 @@
     type AccentPreference,
     type ThemePreference,
   } from "../stores/theme.svelte";
-  import { getShortcutInfo, purgeAppData } from "../services/backend";
-  import type { ShortcutInfo } from "../types/domain";
+  import {
+    applyLayout,
+    captureLayout,
+    deleteLayout,
+    getShortcutInfo,
+    listLayouts,
+    purgeAppData,
+  } from "../services/backend";
+  import type { LayoutSummary, ShortcutInfo } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
   import {
     clearWallpaper,
@@ -112,6 +119,69 @@
       pushToast("ok", "背景已清除");
     } catch (err) {
       pushToast("error", `清除失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // --- 桌面布局快照（LVM 通道，只动图标位置，不动文件） ---------------------
+
+  let layouts = $state<LayoutSummary[]>([]);
+  let layoutName = $state("");
+  let layoutBusy = $state(false);
+
+  function refreshLayouts() {
+    listLayouts()
+      .then((v) => {
+        layouts = v;
+      })
+      .catch(() => {
+        layouts = [];
+      });
+  }
+
+  onMount(refreshLayouts);
+
+  async function onSaveLayout() {
+    const name = layoutName.trim();
+    if (!name) {
+      pushToast("info", "请先填写布局名称");
+      return;
+    }
+    layoutBusy = true;
+    try {
+      const saved = await captureLayout(name);
+      pushToast("ok", `已保存布局「${saved.name}」（${saved.itemCount} 项）`);
+      layoutName = "";
+      refreshLayouts();
+    } catch (err) {
+      pushToast("error", `保存布局失败：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      layoutBusy = false;
+    }
+  }
+
+  async function onApplyLayout(id: number) {
+    layoutBusy = true;
+    try {
+      const r = await applyLayout(id);
+      if (r.diverged > 0) {
+        pushToast("info", `已恢复 ${r.applied} 项，${r.diverged} 项与保存值有偏差（网格吸附）`);
+      } else {
+        pushToast("ok", `已恢复 ${r.applied} 项图标位置`);
+      }
+      if (r.missing > 0) pushToast("info", `${r.missing} 项当前不在桌面上，已跳过`);
+    } catch (err) {
+      pushToast("error", `恢复布局失败：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      layoutBusy = false;
+    }
+  }
+
+  async function onDeleteLayout(id: number) {
+    try {
+      await deleteLayout(id);
+      refreshLayouts();
+    } catch (err) {
+      pushToast("error", `删除失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -230,6 +300,59 @@
         />
       </div>
     {/if}
+  </section>
+
+  <section class="group" aria-label="桌面布局快照">
+    <h2>桌面布局快照</h2>
+    <div class="row">
+      <div class="row-text">
+        <span class="row-title">保存当前布局</span>
+        <span class="row-desc">
+          通过系统消息读取桌面图标位置并保存；不移动、不改名任何文件。
+        </span>
+      </div>
+      <span class="btn-row">
+        <input
+          class="layout-name"
+          placeholder="布局名称，如：工作布局"
+          bind:value={layoutName}
+          maxlength="40"
+        />
+        <button type="button" class="btn" onclick={() => void onSaveLayout()} disabled={layoutBusy}>
+          保存
+        </button>
+      </span>
+    </div>
+    {#if layouts.length === 0}
+      <p class="row-desc row-gap">还没有保存的布局。</p>
+    {:else}
+      <ul class="layout-list row-gap">
+        {#each layouts as l (l.id)}
+          <li>
+            <span class="layout-title">{l.name}</span>
+            <span class="layout-meta">
+              {l.itemCount} 项 · {new Date(l.createdAt).toLocaleString()}
+            </span>
+            <span class="btn-row">
+              <button
+                type="button"
+                class="btn"
+                onclick={() => void onApplyLayout(l.id)}
+                disabled={layoutBusy}
+              >
+                应用
+              </button>
+              <button type="button" class="btn" onclick={() => void onDeleteLayout(l.id)}>
+                删除
+              </button>
+            </span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    <p class="row-desc row-gap">
+      应用前会先做一次“金丝雀”探测：若检测到“自动排列图标”开启（位置写入会被系统忽略），将拒绝恢复并提示。
+    </p>
   </section>
 
   <section class="group" aria-label="全局快捷键">
@@ -466,6 +589,43 @@
   input[type="range"] {
     width: 180px;
     accent-color: var(--accent);
+  }
+
+  .layout-name {
+    width: 200px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    color: var(--text-primary);
+  }
+
+  .layout-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .layout-list li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .layout-title {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .layout-meta {
+    flex: 1;
+    font-size: var(--font-size-s);
+    color: var(--text-tertiary);
+    overflow-wrap: anywhere;
   }
 
   .danger {

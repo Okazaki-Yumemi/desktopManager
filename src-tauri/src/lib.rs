@@ -80,6 +80,10 @@ pub fn run() {
             commands::background::background_set,
             commands::background::background_clear,
             commands::background::appdata_purge,
+            commands::layout::layout_capture,
+            commands::layout::layout_list,
+            commands::layout::layout_apply,
+            commands::layout::layout_delete,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {
