@@ -4,12 +4,15 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import {
+    ChevronRight,
     Eye,
     EyeOff,
     FileSymlink,
     FileText,
     Folder,
+    FolderPlus,
     Layers,
+    Pencil,
     Plus,
     RotateCw,
     Search,
@@ -18,7 +21,7 @@
   import DesktopIcon from "../components/DesktopIcon.svelte";
   import {
     assignExternalToCollection,
-    assignToCollection,
+    browseChildren,
     createCollection,
     createScene,
     deleteCollection,
@@ -31,13 +34,14 @@
     listScenes,
     openCollectionItem,
     openDesktopItem,
+    renameCollection,
     rescanDesktop,
     searchDesktopItems,
     setSceneVisibility,
     setSetting,
     unassignFromCollection,
   } from "../services/backend";
-  import type { Collection, DesktopItem, Scene } from "../types/domain";
+  import type { Collection, DesktopItem, PathEntry, Scene } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
   import { formatDateShort } from "../lib/datetime";
   import { DESKTOP_CHANGED_EVENT } from "../lib/events";
@@ -55,6 +59,18 @@
   let activeCollectionId = $state<number | null>(null);
   let creating = $state(false);
   let newName = $state("");
+  // Parent of the collection being created (null = top level).
+  let createParentId = $state<number | null>(null);
+  // Rename-in-place: the active chip turns into an input.
+  let renamingId = $state<number | null>(null);
+  let renameDraft = $state("");
+
+  // Expanded folder reference: the trail of entered directories. An empty
+  // trail means the collection/desktop root listing.
+  type TrailStep = { path: string; label: string };
+  let browseTrail = $state<TrailStep[]>([]);
+  let browseItems = $state<DesktopItem[]>([]);
+  let browseLoading = $state(false);
 
   // Scenes: a scene hides some collections from the chips row (pure
   // metadata — files are never touched). Collections without an explicit
@@ -87,6 +103,50 @@
   const hiddenCollections = $derived(
     activeSceneId === null ? [] : collections.filter((c) => sceneHidden.has(c.id)),
   );
+
+  /** Leave any expanded folder when the collection filter changes. */
+  let browseScope: number | null = null;
+  $effect(() => {
+    if (activeCollectionId !== browseScope) {
+      browseScope = activeCollectionId;
+      browseTrail = [];
+      browseItems = [];
+    }
+  });
+
+  // Depth-first over parent links so sub-collections render right after
+  // (indented under) their parent. Scene-hidden collections drop out with
+  // their unreferenced children; anything unreachable still shows flat.
+  const orderedCollections = $derived.by(() => {
+    const childrenOf: Record<string, Collection[]> = {};
+    for (const c of visibleCollections) {
+      const key = c.parentId === null ? "" : String(c.parentId);
+      (childrenOf[key] ??= []).push(c);
+    }
+    const out: { col: Collection; depth: number }[] = [];
+    const walk = (parentKey: string, depth: number) => {
+      for (const col of childrenOf[parentKey] ?? []) {
+        out.push({ col, depth });
+        if (depth < 4) walk(String(col.id), depth + 1);
+      }
+    };
+    walk("", 0);
+    for (const col of visibleCollections) {
+      if (!out.some((e) => e.col.id === col.id)) out.push({ col, depth: 0 });
+    }
+    return out;
+  });
+
+  // What the grid shows: the root listing, or the expanded folder's
+  // children (client-side filtered by the same search box).
+  const browsing = $derived(browseTrail.length > 0);
+  const shownItems = $derived.by(() => {
+    if (!browsing) return items;
+    const needle = query.trim().toLowerCase();
+    return needle
+      ? browseItems.filter((i) => i.displayName.toLowerCase().includes(needle))
+      : browseItems;
+  });
 
   async function loadCollections() {
     try {
@@ -171,7 +231,63 @@
     }
   }
 
+  /** Enter one folder level of the current listing (expand a reference). */
+  async function enterFolder(item: DesktopItem) {
+    if (browseLoading) return;
+    browseLoading = true;
+    try {
+      const children = await browseChildren(item.path);
+      browseTrail = [...browseTrail, { path: item.path, label: item.displayName }];
+      browseItems = children.map(toBrowseItem);
+      selectedPath = null;
+    } catch (err) {
+      pushToast("error", `无法展开文件夹：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      browseLoading = false;
+    }
+  }
+
+  /** Jump back to a trail level; -1 returns to the root listing. */
+  async function jumpToLevel(level: number) {
+    if (browseLoading) return;
+    if (level < 0) {
+      browseTrail = [];
+      browseItems = [];
+      return;
+    }
+    const step = browseTrail[level];
+    if (!step) return;
+    browseLoading = true;
+    try {
+      const children = await browseChildren(step.path);
+      browseTrail = browseTrail.slice(0, level + 1);
+      browseItems = children.map(toBrowseItem);
+      selectedPath = null;
+    } catch (err) {
+      pushToast("error", `无法读取文件夹：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      browseLoading = false;
+    }
+  }
+
+  /** Folder-listing entry → grid card model (external snapshot semantics). */
+  function toBrowseItem(entry: PathEntry): DesktopItem {
+    const isLink = entry.ext === "lnk" || entry.ext === "url";
+    return {
+      id: -1,
+      path: entry.path,
+      source: "external",
+      displayName: entry.name,
+      kind: entry.isDir ? "folder" : isLink ? "shortcut" : "file",
+      ext: entry.ext,
+      sizeBytes: entry.sizeBytes,
+      modifiedAt: null,
+      missing: false,
+    };
+  }
+
   async function open(item: DesktopItem) {
+    if (item.path.startsWith("\0")) return; // truncated-listing marker
     try {
       if (item.source === "external") await openCollectionItem(item.path);
       else await openDesktopItem(item.path);
@@ -184,7 +300,9 @@
 
   async function assign(collectionId: number, path: string) {
     try {
-      const created = await assignToCollection(collectionId, path);
+      // assign_any on the backend: indexed paths stay live, everything
+      // else (e.g. expanded-folder children) becomes a snapshot row.
+      const created = await assignExternalToCollection(collectionId, path);
       if (created) pushToast("ok", "已加入集合");
       await reload();
     } catch (err) {
@@ -222,19 +340,47 @@
     }
   }
 
+  function startCreating(parentId: number | null) {
+    creating = true;
+    createParentId = parentId;
+    newName = "";
+  }
+
   async function submitCreate() {
     if (!creating) return;
     creating = false;
     const name = newName.trim();
+    const parentId = createParentId;
+    createParentId = null;
     if (!name) return;
     try {
-      const col = await createCollection(name, paletteFor(collections.length));
+      const col = await createCollection(name, paletteFor(collections.length), parentId);
       newName = "";
       await loadCollections();
       activeCollectionId = col.id;
       pushToast("ok", `集合「${col.name}」已创建`);
     } catch (err) {
       pushToast("error", `创建失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  function startRename(col: Collection) {
+    renamingId = col.id;
+    renameDraft = col.name;
+  }
+
+  async function submitRename() {
+    if (renamingId === null) return;
+    const id = renamingId;
+    renamingId = null;
+    const name = renameDraft.trim();
+    if (!name) return;
+    try {
+      await renameCollection(id, name);
+      await loadCollections();
+      pushToast("ok", "已重命名");
+    } catch (err) {
+      pushToast("error", `重命名失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -349,6 +495,7 @@
   // elementFromPoint so the ghost can stay pointer-events: none.
   function onItemPointerDown(e: PointerEvent, item: DesktopItem) {
     if (e.button !== 0) return;
+    if (item.path.startsWith("\0")) return; // truncated-listing marker
     const startX = e.clientX;
     const startY = e.clientY;
 
@@ -498,40 +645,77 @@
     >
       全部
     </button>
-    {#each visibleCollections as col (col.id)}
-      <span class="chip-wrap">
-        <button
-          type="button"
-          class="chip"
-          class:active={activeCollectionId === col.id}
-          class:drop={drag?.over === String(col.id)}
-          title="点击筛选；把项目拖到这里加入集合"
-          data-drop-id={String(col.id)}
-          onclick={() => (activeCollectionId = col.id)}
-        >
-          <span class="dot" style="background: {col.color}"></span>
-          {col.name}
-          <span class="count">{col.itemCount}</span>
-        </button>
-        {#if activeSceneId !== null}
+    {#each orderedCollections as { col, depth } (col.id)}
+      <span
+        class="chip-wrap"
+        style:margin-left={depth > 0 ? `${depth * 16}px` : undefined}
+      >
+        {#if renamingId === col.id}
+          <span class="chip create-chip">
+            <input
+              bind:value={renameDraft}
+              placeholder="新名称，回车确认"
+              maxlength="30"
+              aria-label="重命名集合"
+              use:focusOnMount
+              onkeydown={(e) => {
+                if (e.key === "Enter") void submitRename();
+                if (e.key === "Escape") renamingId = null;
+              }}
+              onblur={() => void submitRename()}
+            />
+          </span>
+        {:else}
+          {#if depth > 0}<span class="tree-elbow" aria-hidden="true">└</span>{/if}
           <button
             type="button"
-            class="chip-del"
-            title="在当前场景隐藏这个集合"
-            onclick={() => void toggleCollectionVisible(col.id)}
+            class="chip"
+            class:active={activeCollectionId === col.id}
+            class:drop={drag?.over === String(col.id)}
+            title="点击筛选；把项目拖到这里加入集合"
+            data-drop-id={String(col.id)}
+            onclick={() => (activeCollectionId = col.id)}
           >
-            <Eye size={12} />
+            <span class="dot" style="background: {col.color}"></span>
+            {col.name}
+            <span class="count">{col.itemCount}</span>
           </button>
-        {/if}
-        {#if activeCollectionId === col.id}
-          <button
-            type="button"
-            class="chip-del"
-            title="删除集合"
-            onclick={() => void removeCollection(col.id)}
-          >
-            <X size={12} />
-          </button>
+          {#if activeSceneId !== null}
+            <button
+              type="button"
+              class="chip-del"
+              title="在当前场景隐藏这个集合"
+              onclick={() => void toggleCollectionVisible(col.id)}
+            >
+              <Eye size={12} />
+            </button>
+          {/if}
+          {#if activeCollectionId === col.id}
+            <button
+              type="button"
+              class="chip-del"
+              title="重命名集合"
+              onclick={() => startRename(col)}
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              type="button"
+              class="chip-del"
+              title="新建子集合"
+              onclick={() => startCreating(col.id)}
+            >
+              <FolderPlus size={12} />
+            </button>
+            <button
+              type="button"
+              class="chip-del"
+              title="删除集合（连同子集合）"
+              onclick={() => void removeCollection(col.id)}
+            >
+              <X size={12} />
+            </button>
+          {/if}
         {/if}
       </span>
     {/each}
@@ -570,7 +754,7 @@
       <span class="chip create-chip">
         <input
           bind:value={newName}
-          placeholder="集合名称，回车确认"
+          placeholder={createParentId ? "子集合名称，回车确认" : "集合名称，回车确认"}
           maxlength="30"
           use:focusOnMount
           onkeydown={(e) => {
@@ -584,10 +768,7 @@
       <button
         type="button"
         class="chip add"
-        onclick={() => {
-          creating = true;
-          newName = "";
-        }}
+        onclick={() => startCreating(null)}
       >
         <Plus size={13} />
         新建集合
@@ -607,6 +788,27 @@
     </div>
   </div>
 
+  {#if browsing}
+    <nav class="crumbs" aria-label="文件夹路径">
+      <button type="button" class="crumb" onclick={() => void jumpToLevel(-1)}>
+        {activeCollection?.name ?? "桌面"}
+      </button>
+      {#each browseTrail as step, i (step.path)}
+        <span class="crumb-sep" aria-hidden="true">/</span>
+        {#if i === browseTrail.length - 1}
+          <span class="crumb current">{step.label}</span>
+        {:else}
+          <button type="button" class="crumb" onclick={() => void jumpToLevel(i)}>
+            {step.label}
+          </button>
+        {/if}
+      {/each}
+      {#if browseLoading}
+        <span class="crumb-loading">读取中…</span>
+      {/if}
+    </nav>
+  {/if}
+
   {#if loadError}
     <div class="state">
       <p class="error-text">读取桌面索引失败：{loadError}</p>
@@ -614,19 +816,25 @@
     </div>
   {:else if loading}
     <div class="state"><p class="muted">正在加载桌面索引…</p></div>
-  {:else if items.length === 0 && hasQuery}
+  {:else if browsing && shownItems.length === 0}
+    <div class="state">
+      <p class="muted">
+        {hasQuery ? `没有找到与“${query.trim()}”匹配的项目` : "这个文件夹是空的"}
+      </p>
+    </div>
+  {:else if shownItems.length === 0 && hasQuery}
     <div class="state"><p class="muted">没有找到与“{query.trim()}”匹配的项目</p></div>
-  {:else if items.length === 0 && activeCollection}
+  {:else if shownItems.length === 0 && activeCollection}
     <div class="state">
       <p class="muted">
         集合里还没有项目——把下面的项目拖到「{activeCollection.name}」上，或从资源管理器把快捷方式拖进窗口
       </p>
     </div>
-  {:else if items.length === 0}
+  {:else if shownItems.length === 0}
     <div class="state"><p class="muted">桌面上没有可见项目</p></div>
   {:else}
     <ul class="grid" aria-label="桌面项目">
-      {#each items as item (item.id)}
+      {#each shownItems as item (item.path)}
         <li>
           <button
             type="button"
@@ -662,6 +870,27 @@
               <span class="badge">公用</span>
             {:else if item.source === "external"}
               <span class="badge">外部</span>
+            {/if}
+            {#if item.kind === "folder" && !item.path.startsWith("\0")}
+              <span
+                class="expand"
+                role="button"
+                tabindex="-1"
+                title="展开文件夹"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  void enterFolder(item);
+                }}
+                onpointerdown={(e) => e.stopPropagation()}
+                onkeydown={(e) => {
+                  if (e.key === "Enter") {
+                    e.stopPropagation();
+                    void enterFolder(item);
+                  }
+                }}
+              >
+                <ChevronRight size={14} />
+              </span>
             {/if}
           </button>
         </li>
@@ -714,7 +943,8 @@
     padding: 6px 14px;
     border: 1px solid var(--border);
     border-radius: var(--radius-m);
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     color: var(--text-secondary);
     cursor: pointer;
     transition: background var(--duration-fast) var(--ease-out),
@@ -761,12 +991,20 @@
     padding: 4px 12px;
     border: 1px solid var(--border);
     border-radius: 999px;
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     color: var(--text-secondary);
     font-size: var(--font-size-s);
     cursor: pointer;
     transition: border-color var(--duration-fast) var(--ease-out),
       background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  }
+
+  .tree-elbow {
+    margin-right: -6px;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-s);
+    user-select: none;
   }
 
   .chip:hover {
@@ -859,7 +1097,8 @@
     padding: 0 var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius-m);
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     color: var(--text-tertiary);
     max-width: 420px;
   }
@@ -895,7 +1134,8 @@
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius-m);
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     cursor: pointer;
     user-select: none;
     transition: border-color var(--duration-fast) var(--ease-out),
@@ -961,6 +1201,62 @@
     color: var(--text-tertiary);
   }
 
+  .expand {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-left: -6px;
+    border-radius: var(--radius-s);
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .item:hover .expand,
+  .expand:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .crumbs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    font-size: var(--font-size-s);
+  }
+
+  .crumb {
+    padding: 2px 8px;
+    border: none;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .crumb:hover {
+    background: var(--accent-soft);
+  }
+
+  .crumb.current {
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: default;
+  }
+
+  .crumb-sep {
+    color: var(--text-tertiary);
+  }
+
+  .crumb-loading {
+    color: var(--text-tertiary);
+  }
+
   .state {
     padding: var(--space-6) 0;
     text-align: center;
@@ -992,7 +1288,8 @@
     padding: 4px 12px;
     border: 1px solid var(--accent);
     border-radius: var(--radius-m);
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     color: var(--text-primary);
     font-size: var(--font-size-s);
     box-shadow: var(--shadow);

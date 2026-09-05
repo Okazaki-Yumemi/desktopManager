@@ -45,6 +45,8 @@ Untested Win32 claims are forbidden — everything here needs WINDOWS_TESTED.
 
 > **Status: core delivered 2026-09-05** — scene CRUD + per-scene collection visibility + switcher + restore-previous (D16). Deferred: per-scene global shortcuts, focus-scene handoff (with M5), geometry columns.
 
+> **UX round 2026-09-05 (user feedback)** — frosted-glass surfaces (D18), collection rename in place, sub-collections + in-app folder browsing (D19), 今天 page turned into a welcome screen with backend status/quick-start moved to Settings.
+
 Create/edit scenes, per-scene collection visibility/layout, scene switcher,
 keyboard shortcuts, restore previous scene, focus-scene handoff state.
 

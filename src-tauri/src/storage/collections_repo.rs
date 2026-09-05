@@ -5,6 +5,7 @@
 //! the natural key of the desktop index.
 
 use rusqlite::params;
+use rusqlite::OptionalExtension;
 use serde::Serialize;
 
 use crate::app::error::{AppError, AppResult};
@@ -17,8 +18,12 @@ pub struct Collection {
     pub id: i64,
     pub name: String,
     pub color: String,
+    pub parent_id: Option<i64>,
     pub item_count: i64,
 }
+
+/// Deepest allowed nesting: root + 4 levels of children.
+const MAX_DEPTH: usize = 5;
 
 pub struct CollectionsRepo<'a> {
     conn: &'a rusqlite::Connection,
@@ -32,7 +37,7 @@ impl<'a> CollectionsRepo<'a> {
     /// All collections with item counts, in stable creation order.
     pub fn list(&self) -> AppResult<Vec<Collection>> {
         let mut stmt = self.conn.prepare(
-            "SELECT c.id, c.name, c.color, COUNT(ci.id)
+            "SELECT c.id, c.name, c.color, c.parent_id, COUNT(ci.id)
              FROM collections c
              LEFT JOIN collection_items ci ON ci.collection_id = c.id
              GROUP BY c.id
@@ -43,16 +48,20 @@ impl<'a> CollectionsRepo<'a> {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 color: row.get(2)?,
-                item_count: row.get(3)?,
+                parent_id: row.get(3)?,
+                item_count: row.get(4)?,
             })
         })?;
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
     }
 
-    pub fn create(&self, name: &str, color: &str) -> AppResult<Collection> {
+    pub fn create(&self, name: &str, color: &str, parent_id: Option<i64>) -> AppResult<Collection> {
         let name = name.trim();
         if name.is_empty() {
             return Err(AppError::Other("集合名称不能为空".into()));
+        }
+        if parent_id.is_some() {
+            self.check_depth(parent_id)?;
         }
         let exists: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM collections WHERE name = ?1",
@@ -68,22 +77,60 @@ impl<'a> CollectionsRepo<'a> {
             |row| row.get(0),
         )?;
         self.conn.execute(
-            "INSERT INTO collections (name, color, sort_order, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?4)",
-            params![name, color, sort_order, now_millis()],
+            "INSERT INTO collections (name, color, parent_id, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+            params![name, color, parent_id, sort_order, now_millis()],
         )?;
         Ok(Collection {
             id: self.conn.last_insert_rowid(),
             name: name.to_owned(),
             color: color.to_owned(),
+            parent_id,
             item_count: 0,
         })
+    }
+
+    /// Validate the parent chain of a would-be child: the parent must exist
+    /// and the resulting depth must stay within `MAX_DEPTH`. The walk also
+    /// terminates on (corrupt) cycles via the depth cap.
+    fn check_depth(&self, parent_id: Option<i64>) -> AppResult<()> {
+        let mut cur = parent_id;
+        let mut hops = 0_usize;
+        while let Some(pid) = cur {
+            let row: Option<Option<i64>> = self
+                .conn
+                .query_row(
+                    "SELECT parent_id FROM collections WHERE id = ?1",
+                    [pid],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            let Some(next) = row else {
+                return Err(AppError::Other("父集合不存在".into()));
+            };
+            hops += 1;
+            if hops >= MAX_DEPTH {
+                return Err(AppError::Other(format!(
+                    "集合层级过深（最多 {MAX_DEPTH} 层）"
+                )));
+            }
+            cur = next;
+        }
+        Ok(())
     }
 
     pub fn rename(&self, id: i64, name: &str) -> AppResult<()> {
         let name = name.trim();
         if name.is_empty() {
             return Err(AppError::Other("集合名称不能为空".into()));
+        }
+        let dup: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM collections WHERE name = ?1 AND id != ?2",
+            params![name, id],
+            |row| row.get(0),
+        )?;
+        if dup > 0 {
+            return Err(AppError::Other(format!("同名集合已存在：{name}")));
         }
         let changed = self.conn.execute(
             "UPDATE collections SET name = ?2, updated_at = ?3 WHERE id = ?1",
@@ -95,15 +142,33 @@ impl<'a> CollectionsRepo<'a> {
         Ok(())
     }
 
-    /// Delete a collection and its assignments. Children are removed
-    /// explicitly so this holds regardless of the foreign_keys pragma.
+    /// Delete a collection, its whole subtree, and all their assignments.
+    /// The recursive CTE keeps this correct regardless of the foreign_keys
+    /// pragma.
     pub fn delete(&self, id: i64) -> AppResult<()> {
         let tx = self.conn.unchecked_transaction()?;
         tx.execute(
-            "DELETE FROM collection_items WHERE collection_id = ?1",
+            "DELETE FROM collection_items WHERE collection_id IN (
+                 WITH RECURSIVE sub(id) AS (
+                     SELECT id FROM collections WHERE id = ?1
+                     UNION ALL
+                     SELECT c.id FROM collections c JOIN sub ON c.parent_id = sub.id
+                 )
+                 SELECT id FROM sub
+             )",
             [id],
         )?;
-        let changed = tx.execute("DELETE FROM collections WHERE id = ?1", [id])?;
+        let changed = tx.execute(
+            "DELETE FROM collections WHERE id IN (
+                 WITH RECURSIVE sub(id) AS (
+                     SELECT id FROM collections WHERE id = ?1
+                     UNION ALL
+                     SELECT c.id FROM collections c JOIN sub ON c.parent_id = sub.id
+                 )
+                 SELECT id FROM sub
+             )",
+            [id],
+        )?;
         if changed == 0 {
             return Err(AppError::Other("集合不存在".into()));
         }
@@ -276,8 +341,8 @@ mod tests {
         seed_item(&mut db, "C:\\d\\a.pdf", "a.pdf");
         seed_item(&mut db, "C:\\d\\b.txt", "b.txt");
 
-        let c1 = repo(&mut db).create("工作", "#ff0000").unwrap();
-        let c2 = repo(&mut db).create("随手记", "#00ff00").unwrap();
+        let c1 = repo(&mut db).create("工作", "#ff0000", None).unwrap();
+        let c2 = repo(&mut db).create("随手记", "#00ff00", None).unwrap();
         assert_eq!(c1.item_count, 0);
         assert_eq!(c2.name, "随手记");
 
@@ -300,7 +365,7 @@ mod tests {
     #[test]
     fn assign_rejects_paths_outside_the_index() {
         let mut db = Database::open_in_memory().unwrap();
-        let c = repo(&mut db).create("工作", "#ff0000").unwrap();
+        let c = repo(&mut db).create("工作", "#ff0000", None).unwrap();
         let err = repo(&mut db)
             .assign(c.id, "C:\\Windows\\notepad.exe")
             .unwrap_err();
@@ -310,15 +375,63 @@ mod tests {
     #[test]
     fn duplicate_names_are_rejected_but_rename_works() {
         let mut db = Database::open_in_memory().unwrap();
-        repo(&mut db).create("工作", "#ff0000").unwrap();
-        assert!(repo(&mut db).create("工作", "#ff0000").is_err());
-        assert!(repo(&mut db).create("  工作  ", "#ff0000").is_err()); // trim-insensitive
+        repo(&mut db).create("工作", "#ff0000", None).unwrap();
+        assert!(repo(&mut db).create("工作", "#ff0000", None).is_err());
+        assert!(repo(&mut db).create("  工作  ", "#ff0000", None).is_err()); // trim-insensitive
 
-        let c = repo(&mut db).create("临时", "#ff0000").unwrap();
+        let c = repo(&mut db).create("临时", "#ff0000", None).unwrap();
         repo(&mut db).rename(c.id, "草稿").unwrap();
         let listed = repo(&mut db).list().unwrap();
         assert_eq!(listed[1].name, "草稿");
         assert!(repo(&mut db).rename(9999, "x").is_err());
+        // Rename must not collide with another collection's name.
+        assert!(repo(&mut db).rename(c.id, "工作").is_err());
+        repo(&mut db).rename(c.id, "  草稿  ").unwrap(); // trim, same name OK
+    }
+
+    #[test]
+    fn sub_collections_nest_and_depth_is_capped() {
+        let mut db = Database::open_in_memory().unwrap();
+        let root = repo(&mut db).create("根", "#ff0000", None).unwrap();
+        let child = repo(&mut db).create("子", "#00ff00", Some(root.id)).unwrap();
+        let grand = repo(&mut db).create("孙", "#0000ff", Some(child.id)).unwrap();
+
+        let listed = repo(&mut db).list().unwrap();
+        assert_eq!(listed[1].parent_id, Some(root.id));
+        assert_eq!(listed[2].parent_id, Some(child.id));
+
+        // Missing parent and too-deep chains are rejected.
+        assert!(repo(&mut db).create("x", "#ff0000", Some(9999)).is_err());
+        let mut leaf = grand.id;
+        for i in 3..MAX_DEPTH {
+            let next = repo(&mut db)
+                .create(&format!("l{i}"), "#ff0000", Some(leaf))
+                .unwrap();
+            leaf = next.id;
+        }
+        assert!(repo(&mut db)
+            .create("太深了", "#ff0000", Some(leaf))
+            .unwrap_err()
+            .to_string()
+            .contains("层级过深"));
+    }
+
+    #[test]
+    fn deleting_a_parent_removes_the_whole_subtree() {
+        let mut db = Database::open_in_memory().unwrap();
+        seed_item(&mut db, "C:\\d\\a.pdf", "a.pdf");
+        let root = repo(&mut db).create("根", "#ff0000", None).unwrap();
+        let child = repo(&mut db).create("子", "#00ff00", Some(root.id)).unwrap();
+        let grand = repo(&mut db).create("孙", "#0000ff", Some(child.id)).unwrap();
+        repo(&mut db).assign(grand.id, "C:\\d\\a.pdf").unwrap();
+
+        repo(&mut db).delete(root.id).unwrap();
+        assert_eq!(repo(&mut db).list().unwrap().len(), 0);
+        let orphans: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM collection_items", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(orphans, 0);
     }
 
     #[test]
@@ -333,7 +446,7 @@ mod tests {
             )
             .unwrap();
 
-        let c = repo(&mut db).create("工作", "#ff0000").unwrap();
+        let c = repo(&mut db).create("工作", "#ff0000", None).unwrap();
         repo(&mut db).assign(c.id, "C:\\d\\a.pdf").unwrap();
         repo(&mut db).assign(c.id, "C:\\d\\gone.txt").unwrap();
         assert_eq!(repo(&mut db).items(c.id).unwrap().len(), 1); // missing filtered
@@ -356,7 +469,7 @@ mod tests {
         let lnk = dir.join("我的工具.lnk");
         std::fs::write(&lnk, b"stub").unwrap();
 
-        let c = repo(&mut db).create("工具", "#ff0000").unwrap();
+        let c = repo(&mut db).create("工具", "#ff0000", None).unwrap();
         assert!(repo(&mut db)
             .assign_external(c.id, &lnk.to_string_lossy())
             .unwrap());

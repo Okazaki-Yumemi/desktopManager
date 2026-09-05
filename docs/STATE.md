@@ -34,7 +34,7 @@
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. Next: **M6 — Tasks + Calendar**. Deferred: Explorer-restart persistence re-apply.
+M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. Next: **M6 — Tasks + Calendar**. Deferred: Explorer-restart persistence re-apply.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -120,6 +120,14 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-05 (UX round, partial WINDOWS_TESTED): frosted glass + Today welcome
+  page verified live on the user's wallpaper (clock/motto/focus line/connected
+  pill rendered); migration 0008 confirmed applied on the real DB
+  (collections.parent_id present, existing row NULL). Rename / sub-collection
+  chips / folder expand sit behind the web a11y tree, so interactive clicks
+  are left for the user — repo logic covered by unit tests. 39 unit tests,
+  clippy 0, svelte-check 0, eslint 0.
 
 - 2026-09-05 (M3 core, WINDOWS_TESTED): `cargo test -- --ignored` 2/2 on the real desktop — live LVM read + canary roundtrip. 27 unit tests, clippy/svelte-check/eslint 0. Settings UI restore pass pending user.
 - 2026-09-05 (M2 collections, WINDOWS_TESTED): collection created via inline

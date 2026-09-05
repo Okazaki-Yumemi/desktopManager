@@ -8,6 +8,7 @@ import type {
   FocusSession,
   LayoutApplyReport,
   LayoutSummary,
+  PathEntry,
   Scene,
   SceneLayout,
   ShortcutInfo,
@@ -50,12 +51,25 @@ export async function listCollections(): Promise<Collection[]> {
   return invoke<Collection[]>("collections_list");
 }
 
-export async function createCollection(name: string, color: string): Promise<Collection> {
-  return invoke<Collection>("collection_create", { name, color });
+export async function createCollection(
+  name: string,
+  color: string,
+  parentId?: number | null,
+): Promise<Collection> {
+  return invoke<Collection>("collection_create", { name, color, parentId });
+}
+
+export async function renameCollection(id: number, name: string): Promise<void> {
+  await invoke("collection_rename", { id, name });
 }
 
 export async function deleteCollection(id: number): Promise<void> {
   await invoke("collection_delete", { id });
+}
+
+/** Read-only listing of a folder's immediate children (expand a reference). */
+export async function browseChildren(path: string): Promise<PathEntry[]> {
+  return invoke<PathEntry[]>("browse_children", { path });
 }
 
 export async function assignToCollection(id: number, path: string): Promise<boolean> {

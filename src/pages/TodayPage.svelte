@@ -1,142 +1,159 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getAppInfo } from "../services/backend";
+  import { getAppInfo, getFocusSummary } from "../services/backend";
   import type { AppInfo } from "../types/domain";
   import { formatDateLong, greetingForHour } from "../lib/datetime";
 
-  let info = $state<AppInfo | null>(null);
-  let loadError = $state<string | null>(null);
+  // Ticking clock: one `now` value drives greeting, date, time and seconds.
+  let now = $state(new Date());
+  let backend = $state<{ info: AppInfo | null; error: string | null }>({
+    info: null,
+    error: null,
+  });
+  let focusLine = $state<string | null>(null);
 
-  const now = new Date();
-  const dateLine = formatDateLong(now);
-  const greeting = greetingForHour(now.getHours());
+  // Original taglines, picked deterministically per calendar day.
+  const MOTTOS: ReadonlyArray<string> = [
+    "把桌面整理好，把心情腾出来。",
+    "一次只做一件事。",
+    "少即是多，慢即是快。",
+    "干净的桌面，清醒的头脑。",
+    "先完成，再完美。",
+    "工具应当隐于无形。",
+    "今天的整理，是明天的从容。",
+    "专注当下，其余自会就位。",
+    "秩序不是束缚，是省下来的力气。",
+    "桌面如镜，照见今日所求。",
+  ];
+
+  function pad(n: number): string {
+    return String(n).padStart(2, "0");
+  }
+
+  const time = $derived(`${pad(now.getHours())}:${pad(now.getMinutes())}`);
+  const seconds = $derived(pad(now.getSeconds()));
+  const dateLine = $derived(`${greetingForHour(now.getHours())} · ${formatDateLong(now)}`);
+  const motto = $derived.by(() => {
+    const dayIndex = Math.floor(now.getTime() / 86_400_000);
+    return MOTTOS[((dayIndex % MOTTOS.length) + MOTTOS.length) % MOTTOS.length] ?? MOTTOS[0]!;
+  });
 
   onMount(() => {
+    const timer = setInterval(() => {
+      now = new Date();
+    }, 1000);
     getAppInfo()
-      .then((v) => {
-        info = v;
+      .then((info) => {
+        backend = { info, error: null };
       })
       .catch((err: unknown) => {
-        loadError = err instanceof Error ? err.message : String(err);
+        backend = { info: null, error: err instanceof Error ? err.message : String(err) };
       });
+    getFocusSummary(1)
+      .then((days) => {
+        const today = days.at(-1);
+        if (today && today.totalS > 0) {
+          const h = Math.floor(today.totalS / 3600);
+          const m = Math.round((today.totalS % 3600) / 60);
+          focusLine =
+            h > 0
+              ? `今日专注 ${h} 小时 ${m} 分钟 · ${today.sessions} 段`
+              : `今日专注 ${m} 分钟 · ${today.sessions} 段`;
+        } else {
+          focusLine = null;
+        }
+      })
+      .catch(() => {
+        focusLine = null;
+      });
+    return () => clearInterval(timer);
   });
 </script>
 
 <div class="today">
-  <header>
-    <p class="greeting">{greeting}</p>
-    <h1>{dateLine}</h1>
-  </header>
+  <p class="greeting">{dateLine}</p>
+  <h1 class="clock" aria-label="当前时间">
+    {time}<span class="seconds">{seconds}</span>
+  </h1>
+  <p class="motto">「{motto}」</p>
+  {#if focusLine}
+    <p class="focus-line">{focusLine}</p>
+  {/if}
 
-  <section class="card" aria-label="后端状态">
-    <div class="card-title-row">
-      <h2>后端状态</h2>
-      {#if info}
-        <span class="pill ok">已连接</span>
-      {:else if loadError}
-        <span class="pill error">出错</span>
-      {:else}
-        <span class="pill">连接中…</span>
-      {/if}
-    </div>
-
-    {#if info}
-      <dl class="kv">
-        <div>
-          <dt>版本</dt>
-          <dd>{info.version}</dd>
-        </div>
-        <div>
-          <dt>数据库结构</dt>
-          <dd>v{info.schemaVersion}</dd>
-        </div>
-        <div>
-          <dt>系统</dt>
-          <dd>{info.os}</dd>
-        </div>
-        <div>
-          <dt>数据目录</dt>
-          <dd class="mono">{info.dataDir}</dd>
-        </div>
-        <div>
-          <dt>数据库</dt>
-          <dd class="mono">{info.dbPath}</dd>
-        </div>
-        <div>
-          <dt>日志</dt>
-          <dd class="mono">{info.logDir}</dd>
-        </div>
-      </dl>
-    {:else if loadError}
-      <p class="error-text">
-        无法连接后端：{loadError}
-        <br />
-        （如果你是在普通浏览器里打开的页面，请改用 <code>pnpm tauri dev</code> 启动应用。）
-      </p>
+  <footer class="status">
+    {#if backend.info}
+      <span class="pill ok" title="版本 {backend.info.version} · 数据库结构 v{backend.info.schemaVersion}">
+        已连接 · v{backend.info.version}
+      </span>
+    {:else if backend.error}
+      <span class="pill error" title={backend.error}>
+        未连接 —— 请用 pnpm tauri dev 启动应用
+      </span>
     {:else}
-      <p class="muted">正在连接后端…</p>
+      <span class="pill">连接中…</span>
     {/if}
-  </section>
-
-  <section class="card" aria-label="快速上手">
-    <div class="card-title-row">
-      <h2>快速上手</h2>
-    </div>
-    <p class="hint">
-      在 Windows 任意位置按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> 即可显示或隐藏本窗口。
-      关闭窗口只是隐藏到托盘 —— 想彻底退出请使用托盘菜单。
-    </p>
-    <p class="muted">桌面整理与命令面板将在后续里程碑中到来。</p>
-  </section>
+  </footer>
 </div>
 
 <style>
   .today {
-    max-width: 720px;
-    margin: 0 auto;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  header .greeting {
-    margin: 0 0 var(--space-1);
-    color: var(--text-secondary);
-  }
-
-  header h1 {
-    margin: 0;
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-  }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-l);
-    box-shadow: var(--shadow);
-    padding: var(--space-4) var(--space-5);
-  }
-
-  .card-title-row {
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-3);
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-2);
+    padding: var(--space-6) 0;
   }
 
-  .card-title-row h2 {
+  .greeting {
     margin: 0;
+    color: var(--text-secondary);
     font-size: var(--font-size-l);
+  }
+
+  .clock {
+    margin: var(--space-2) 0;
+    font-family: var(--font-mono);
+    font-size: clamp(64px, 12vw, 112px);
     font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  }
+
+  .seconds {
+    font-size: 0.32em;
+    color: var(--text-tertiary);
+    margin-left: 0.15em;
+    font-weight: 400;
+  }
+
+  .motto {
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-l);
+  }
+
+  .focus-line {
+    margin: var(--space-1) 0 0;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-s);
+  }
+
+  .status {
+    margin-top: var(--space-6);
   }
 
   .pill {
     font-size: var(--font-size-s);
-    padding: 2px 10px;
+    padding: 2px 12px;
     border-radius: 999px;
     border: 1px solid var(--border);
-    color: var(--text-secondary);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
+    color: var(--text-tertiary);
   }
 
   .pill.ok {
@@ -147,52 +164,5 @@
   .pill.error {
     color: var(--error);
     border-color: color-mix(in srgb, var(--error) 35%, transparent);
-  }
-
-  .kv {
-    margin: 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-3) var(--space-5);
-  }
-
-  .kv dt {
-    font-size: var(--font-size-s);
-    color: var(--text-tertiary);
-    margin-bottom: 2px;
-  }
-
-  .kv dd {
-    margin: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .mono {
-    font-family: var(--font-mono);
-    font-size: var(--font-size-s);
-  }
-
-  .muted {
-    color: var(--text-tertiary);
-  }
-
-  .hint {
-    margin: 0 0 var(--space-2);
-  }
-
-  kbd {
-    display: inline-block;
-    padding: 1px 7px;
-    border: 1px solid var(--border-strong);
-    border-bottom-width: 2px;
-    border-radius: var(--radius-s);
-    background: var(--surface);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-s);
-  }
-
-  .error-text {
-    color: var(--error);
-    overflow-wrap: anywhere;
   }
 </style>

@@ -37,11 +37,24 @@ export interface SyncOutcome {
 }
 
 /// A virtual collection (mirrors storage::collections_repo::Collection).
+/// `parentId` nests it under another collection (sub-collections).
 export interface Collection {
   id: number;
   name: string;
   color: string;
+  parentId: number | null;
   itemCount: number;
+}
+
+/// One entry of a read-only folder listing (desktop::browse::PathEntry) used
+/// to expand a folder reference in place. A synthetic marker entry beyond
+/// the 500-item cap carries a non-path `path` starting with "\0".
+export interface PathEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  ext: string | null;
+  sizeBytes: number | null;
 }
 
 /// A saved desktop icon-layout snapshot (storage::layout_repo::LayoutSummary).

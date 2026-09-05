@@ -183,3 +183,29 @@ same way so external items render real shell icons.
   app blocking in V1.
 - Deferred from the M5 line: tray timer state, compact timer window, audio
   notification on phase end.
+
+## D18 — Frosted-glass surfaces over the wallpaper (2026-09-05, UX round)
+
+- User feedback: opaque cards hide the custom wallpaper and feel heavy. All
+  major surfaces (sidebar, cards, chips, item cards, search, toasts, drag
+  ghost) now use a translucent tint var(--glass) plus
+  backdrop-filter: var(--glass-filter) (blur 22px + saturate), themed per
+  light/dark in tokens.css. Tokens are the single source; components never
+  hard-code the recipe. Hover/active states keep the existing opaque-ish
+  tokens for contrast.
+
+## D19 — Sub-collections and in-app folder browsing (2026-09-05, UX round)
+
+- Collections may nest (migration 0008, collections.parent_id). Depth is
+  capped at 5 in the repo; delete removes the whole subtree via a recursive
+  CTE regardless of the foreign_keys pragma; rename is duplicate-checked.
+  The chips row renders depth-first with indent, so sub-collections appear
+  directly under their parent.
+- Folder references expand in place: browse_children lists the immediate
+  children of a directory (read-only, 500-entry cap, hidden entries
+  skipped, dirs first). The open/icon/browse allow-list (D14) is extended:
+  a path is also allowed when it lives inside a desktop-indexed or
+  collection-held directory — expanding a curated folder must not dead-end.
+  This remains read-only metadata/file-open policy; nothing is moved.
+- The 今天 page is a welcome screen (big clock + per-day motto + today's
+  focus total); backend status and the quick-start hint moved to Settings.

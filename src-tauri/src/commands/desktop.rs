@@ -5,11 +5,36 @@ use tauri::{AppHandle, State};
 
 use crate::app::error::{AppError, AppResult};
 use crate::app::state::{lock_db, AppState};
+use crate::desktop::browse::{list_children, PathEntry};
 use crate::desktop::icons::{extract_cached, IconPayload};
 use crate::desktop::open::open_with_shell;
 use crate::desktop::service;
 use crate::storage::collections_repo::{Collection, CollectionsRepo};
 use crate::storage::desktop_repo::{DesktopItem, DesktopRepo, SyncOutcome};
+use crate::storage::Database;
+
+/// Whether a path may be opened, iconized or browsed: it is visible in the
+/// desktop index, held by a collection, or lives inside such a directory
+/// (children of an expanded folder reference — D14 extended for browsing).
+fn path_allowed(db: &mut Database, path: &str) -> AppResult<bool> {
+    let mut cur = std::path::Path::new(path).to_path_buf();
+    loop {
+        let probe = cur.to_string_lossy().into_owned();
+        let allowed = {
+            let conn = db.conn();
+            let indexed = DesktopRepo::new(&*conn).find_visible(&probe)?;
+            let held = CollectionsRepo::new(&*conn).holds_path(&probe)?;
+            indexed.is_some() || held
+        };
+        if allowed {
+            return Ok(true);
+        }
+        match cur.parent() {
+            Some(parent) => cur = parent.to_path_buf(),
+            None => return Ok(false),
+        }
+    }
+}
 
 #[tauri::command]
 pub fn desktop_list(state: State<'_, AppState>) -> AppResult<Vec<DesktopItem>> {
@@ -34,34 +59,29 @@ pub fn desktop_rescan(app: AppHandle) -> AppResult<SyncOutcome> {
     service::rescan(&app)
 }
 
-/// Open an indexed desktop item via the shell. Only paths that are currently
-/// present in the index may be opened — the webview cannot point this command
-/// at arbitrary locations on disk.
+/// Open an indexed desktop item via the shell. Only paths allowed by the
+/// desktop index / collections policy may be opened — the webview cannot
+/// point this command at arbitrary locations on disk.
 #[tauri::command]
 pub fn desktop_open(state: State<'_, AppState>, path: String) -> AppResult<()> {
-    let indexed = {
+    let allowed = {
         let mut db = lock_db(&state)?;
-        DesktopRepo::new(db.conn()).find_visible(&path)?
+        path_allowed(&mut db, &path)?
     };
-    if indexed.is_none() {
-        return Err(AppError::Other("拒绝打开：该路径不在桌面索引中".into()));
+    if !allowed {
+        return Err(AppError::Other("拒绝打开：该路径不在桌面索引或集合允许范围内".into()));
     }
-    tracing::info!(
-        path,
-        kind = indexed.expect("checked above").kind.as_str(),
-        "opening desktop item"
-    );
+    tracing::info!(path, "opening desktop item");
     open_with_shell(&path)
 }
 
-/// Shell icon for an indexed or collection-held item as base64 RGBA
-/// (`None` → UI shows a glyph). Restricted to those two allow-lists.
+/// Shell icon for an allowed path as base64 RGBA (`None` → UI shows a
+/// glyph). Uses the same allow-list as opening.
 #[tauri::command]
 pub fn desktop_icon(state: State<'_, AppState>, path: String) -> AppResult<Option<IconPayloadDto>> {
     let allowed = {
         let mut db = lock_db(&state)?;
-        DesktopRepo::new(db.conn()).find_visible(&path)?.is_some()
-            || CollectionsRepo::new(db.conn()).holds_path(&path)?
+        path_allowed(&mut db, &path)?
     };
     if !allowed {
         return Ok(None);
@@ -71,6 +91,23 @@ pub fn desktop_icon(state: State<'_, AppState>, path: String) -> AppResult<Optio
         height: p.height,
         rgba: p.rgba,
     }))
+}
+
+/// Read-only listing of a folder's immediate children (expand a folder
+/// reference in place). The folder itself must pass the allow-list.
+#[tauri::command]
+pub fn browse_children(state: State<'_, AppState>, path: String) -> AppResult<Vec<PathEntry>> {
+    let allowed = {
+        let mut db = lock_db(&state)?;
+        path_allowed(&mut db, &path)?
+    };
+    if !allowed {
+        return Err(AppError::Other(
+            "拒绝浏览：该文件夹不在桌面索引或集合允许范围内".into(),
+        ));
+    }
+    tracing::debug!(path, "browsing folder children");
+    list_children(&path)
 }
 
 /// Serde-facing mirror of `IconPayload` (camelCase).
@@ -95,9 +132,10 @@ pub fn collection_create(
     state: State<'_, AppState>,
     name: String,
     color: String,
+    parent_id: Option<i64>,
 ) -> AppResult<Collection> {
     let mut db = lock_db(&state)?;
-    let created = CollectionsRepo::new(db.conn()).create(&name, &color)?;
+    let created = CollectionsRepo::new(db.conn()).create(&name, &color, parent_id)?;
     tracing::info!(id = created.id, name = %created.name, "collection created");
     Ok(created)
 }
@@ -155,15 +193,14 @@ pub fn collection_assign_external(
     Ok(created)
 }
 
-/// Open an item stored in a collection. Allowed if the path is visible in
-/// the desktop index or is held by any collection — user-curated lists act
-/// as the allow-list (D14).
+/// Open an item stored in a collection. Allowed if the path passes the
+/// shared allow-list: desktop index, a collection, or inside such a folder
+/// (D14, extended for folder browsing).
 #[tauri::command]
 pub fn collection_open(state: State<'_, AppState>, path: String) -> AppResult<()> {
     let allowed = {
         let mut db = lock_db(&state)?;
-        DesktopRepo::new(db.conn()).find_visible(&path)?.is_some()
-            || CollectionsRepo::new(db.conn()).holds_path(&path)?
+        path_allowed(&mut db, &path)?
     };
     if !allowed {
         return Err(AppError::Other(

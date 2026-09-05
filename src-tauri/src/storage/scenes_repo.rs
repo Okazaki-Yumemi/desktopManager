@@ -200,8 +200,8 @@ mod tests {
         let (c1, c2) = {
             let cols = CollectionsRepo::new(db.conn());
             (
-                cols.create("C1", "#4f8cff").unwrap(),
-                cols.create("C2", "#8b5cf6").unwrap(),
+                cols.create("C1", "#4f8cff", None).unwrap(),
+                cols.create("C2", "#8b5cf6", None).unwrap(),
             )
         };
         {

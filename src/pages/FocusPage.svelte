@@ -639,7 +639,8 @@
   .card {
     border: 1px solid var(--border);
     border-radius: var(--radius-l);
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     padding: var(--space-4);
   }
   .card h2 {

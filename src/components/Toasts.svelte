@@ -35,7 +35,8 @@
     text-align: left;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-m);
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     box-shadow: var(--shadow);
     padding: var(--space-2) var(--space-3);
     cursor: pointer;

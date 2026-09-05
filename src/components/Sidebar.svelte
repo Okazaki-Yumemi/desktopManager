@@ -24,7 +24,7 @@
       </li>
     {/each}
   </ul>
-  <div class="sidebar-footer">v0.1.0 · M2</div>
+  <div class="sidebar-footer">v0.1.0 · M5</div>
 </nav>
 
 <style>
@@ -33,7 +33,8 @@
     flex-direction: column;
     width: 216px;
     flex-shrink: 0;
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     border-right: 1px solid var(--border);
     padding: var(--space-4);
     gap: var(--space-5);

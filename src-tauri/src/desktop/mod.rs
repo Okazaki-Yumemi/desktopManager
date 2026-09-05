@@ -2,6 +2,7 @@
 //! event-driven watcher and shell-open. Classification is metadata only —
 //! this module never moves, renames or deletes a user file.
 
+pub mod browse;
 pub mod discovery;
 pub mod icons;
 pub mod open;

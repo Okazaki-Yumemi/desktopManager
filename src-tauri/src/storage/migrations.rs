@@ -42,6 +42,11 @@ const MIGRATIONS: &[Migration] = &[
         "layout_snapshot_names",
         include_str!("migrations/0007_layout_snapshot_names.sql"),
     ),
+    (
+        8,
+        "collection_nesting",
+        include_str!("migrations/0008_collection_nesting.sql"),
+    ),
 ];
 
 fn latest_version() -> i64 {

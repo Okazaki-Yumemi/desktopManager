@@ -26,6 +26,9 @@
   --duration-fast: 120ms;
   --duration-normal: 200ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Frosted-glass surfaces (shared blur recipe; tint is theme-specific). */
+  --glass-filter: blur(22px) saturate(1.35);
 }
 
 :root[data-theme="light"] {
@@ -34,6 +37,7 @@
   --surface: #ffffff;
   --surface-hover: #edeff2;
   --surface-active: #e4e7eb;
+  --glass: rgb(255 255 255 / 0.55);
   --text-primary: #1a1c1e;
   --text-secondary: #5d6167;
   --text-tertiary: #8a8f98;
@@ -53,6 +57,7 @@
   --surface: #232529;
   --surface-hover: #2b2e33;
   --surface-active: #33373d;
+  --glass: rgb(35 37 41 / 0.55);
   --text-primary: #e4e6e9;
   --text-secondary: #a2a6ad;
   --text-tertiary: #6f747c;

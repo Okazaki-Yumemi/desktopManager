@@ -77,6 +77,7 @@ pub fn run() {
             commands::desktop::collection_items,
             commands::desktop::collection_assign_external,
             commands::desktop::collection_open,
+            commands::desktop::browse_children,
             commands::background::background_set,
             commands::background::background_clear,
             commands::background::appdata_purge,

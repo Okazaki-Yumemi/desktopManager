@@ -13,11 +13,12 @@
     applyLayout,
     captureLayout,
     deleteLayout,
+    getAppInfo,
     getShortcutInfo,
     listLayouts,
     purgeAppData,
   } from "../services/backend";
-  import type { LayoutSummary, ShortcutInfo } from "../types/domain";
+  import type { AppInfo, LayoutSummary, ShortcutInfo } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
   import {
     clearWallpaper,
@@ -46,6 +47,7 @@
   const currentAccent = $derived(getAccentPreference());
 
   let shortcut = $state<ShortcutInfo | null>(null);
+  let info = $state<AppInfo | null>(null);
 
   onMount(() => {
     getShortcutInfo()
@@ -54,6 +56,13 @@
       })
       .catch(() => {
         shortcut = null;
+      });
+    getAppInfo()
+      .then((v) => {
+        info = v;
+      })
+      .catch(() => {
+        info = null;
       });
   });
 
@@ -380,6 +389,53 @@
     {/if}
   </section>
 
+  <section class="group" aria-label="快速上手">
+    <h2>快速上手</h2>
+    <p class="row-desc">
+      在 Windows 任意位置按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>
+      即可显示或隐藏本窗口。关闭窗口只是隐藏到托盘 —— 想彻底退出请使用托盘菜单。
+    </p>
+    <p class="row-desc row-gap">
+      桌面页：点击集合筛选，把项目拖到集合上归类（只记元数据，不会移动文件）；
+      点集合上的铅笔可重命名，文件夹引用可用箭头在应用内展开。
+    </p>
+    <p class="row-desc">专注页提供番茄钟与正计时；任务与日历将随 M6 到来。</p>
+  </section>
+
+  <section class="group" aria-label="系统信息">
+    <h2>系统信息</h2>
+    {#if info}
+      <dl class="kv">
+        <div>
+          <dt>版本</dt>
+          <dd>{info.version}</dd>
+        </div>
+        <div>
+          <dt>数据库结构</dt>
+          <dd>v{info.schemaVersion}</dd>
+        </div>
+        <div>
+          <dt>系统</dt>
+          <dd>{info.os}</dd>
+        </div>
+        <div>
+          <dt>数据目录</dt>
+          <dd class="mono">{info.dataDir}</dd>
+        </div>
+        <div>
+          <dt>数据库</dt>
+          <dd class="mono">{info.dbPath}</dd>
+        </div>
+        <div>
+          <dt>日志</dt>
+          <dd class="mono">{info.logDir}</dd>
+        </div>
+      </dl>
+    {:else}
+      <p class="row-desc">正在读取后端信息…</p>
+    {/if}
+  </section>
+
   <section class="group" aria-label="数据管理">
     <h2>数据管理</h2>
     <div class="row">
@@ -430,11 +486,41 @@
   }
 
   .group {
-    background: var(--surface);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
     border: 1px solid var(--border);
     border-radius: var(--radius-l);
     box-shadow: var(--shadow);
     padding: var(--space-4) var(--space-5);
+  }
+
+  .kv {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .kv dt {
+    font-size: var(--font-size-s);
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+
+  .kv dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 1px 7px;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-s);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-s);
   }
 
   .group h2 {
