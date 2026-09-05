@@ -1,3 +1,15 @@
+## 2026-09-06 — Round 19: M11 冒烟 — release 构建 + 安装包
+
+- `pnpm tauri build` 全绿（vite build → cargo release → 打包，exit 0、
+  无警告）：MSI 2.8 MB、NSIS 2.0 MB、主程序 5.4 MB。产物在
+  src-tauri/target/release/bundle/{msi,nsis}/，等用户安装验收。
+- docs/PERFORMANCE.md 基线表回填二进制/安装包体积（MEASURED）；
+  启动耗时/空闲 CPU/RAM 仍需真实会话测量。
+- STATE.md 新增「晨间验收清单」：过夜 7 轮交付一览 + 10 分钟手工验收
+  步骤（外观偏好、桌面图标大小、月视图 + ICS 导出、提示音、损坏 DB
+  演练、安装包覆盖安装）。
+- **过夜任务到此收口，等待统一验收。**
+
 ## 2026-09-06 — Round 18: 日程 ICS 导出（M6 遗留）
 
 - 新增 `calendar_ics.rs`（纯序列化 + 6 个单测）：RFC 5545 转义（; , \n \）、

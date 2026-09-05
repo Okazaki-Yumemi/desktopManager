@@ -3,7 +3,7 @@
 > Rule: only numbers measured on this machine go in here. Guesswork is not
 > performance data. Update after every resource review (charter §47).
 
-## Baseline (M0) — PENDING MEASUREMENT
+## Baseline (M0) — release sizes MEASURED, live numbers pending
 
 To be recorded with the first release build smoke test:
 
@@ -12,7 +12,7 @@ To be recorded with the first release build smoke test:
 | Startup to usable shell (ms)    | —     | cold start, release build            |
 | Idle CPU (%)                    | —     | 60s sample, main window open + tray  |
 | Idle RAM, whole process tree    | —     | DesktopManager.exe + all WebView2 children |
-| Binary size / installer size    | —     | release build artifacts              |
+| Binary size / installer size    | 5.4 MB exe; MSI 2.8 MB; NSIS 2.0 MB | MEASURED 2026-09-06 first release build (0.1.0) |
 | Disk writes at idle             | —     | should be ~0 besides log rotation    |
 
 Machine: Windows 11 build 26200, x64 — full specs to be recorded with first
