@@ -5,6 +5,8 @@ import type {
   DesktopItem,
   LayoutApplyReport,
   LayoutSummary,
+  Scene,
+  SceneLayout,
   ShortcutInfo,
   SyncOutcome,
 } from "../types/domain";
@@ -109,4 +111,35 @@ export async function applyLayout(id: number): Promise<LayoutApplyReport> {
 
 export async function deleteLayout(id: number): Promise<boolean> {
   return invoke<boolean>("layout_delete", { id });
+}
+
+// --- Scenes (M4) -----------------------------------------------------------
+
+export async function listScenes(): Promise<Scene[]> {
+  return invoke<Scene[]>("scenes_list");
+}
+
+export async function createScene(name: string, color?: string): Promise<Scene> {
+  return invoke<Scene>("scene_create", { name, color });
+}
+
+export async function renameScene(id: number, name: string): Promise<void> {
+  await invoke("scene_rename", { id, name });
+}
+
+export async function deleteScene(id: number): Promise<void> {
+  await invoke("scene_delete", { id });
+}
+
+export async function setSceneVisibility(
+  id: number,
+  collectionId: number,
+  visible: boolean,
+): Promise<void> {
+  await invoke("scene_set_visibility", { id, collectionId, visible });
+}
+
+/** Visibility rows of a scene; collections without a row are visible. */
+export async function getSceneVisibility(id: number): Promise<SceneLayout[]> {
+  return invoke<SceneLayout[]>("scene_visibility", { id });
 }

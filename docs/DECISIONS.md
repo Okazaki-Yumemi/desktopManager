@@ -145,3 +145,19 @@ same way so external items render real shell icons.
 - Honest status: read + canary verified live on this machine (ignored tests,
   `cargo test -- --ignored` 2/2); the settings UI and a real user restore pass
   are still pending one manual run.
+
+## D16 — Scenes hide collections by default-visible rows (2026-09-05, M4)
+
+- Scenes (0003 tables) get their V1 semantics: a scene stores per-collection
+  visibility rows; **collections without a row are visible** (empty scene =
+  everything shows). Orphaned rows from deleted collections are filtered via
+  the visibility JOIN, independent of the foreign_keys pragma.
+- UI model: hidden collections stay in the chips row but dimmed with an
+  EyeOff toggle, so un-hiding is always one click and never needs an edit
+  mode. Geometry columns (pos/size/collapsed) stay unused for now.
+- Switching: clicking the active scene chip restores the previous scene;
+  the active scene persists in settings (`ui.activeScene`).
+- Deferred from M4 scope: global per-scene keyboard shortcuts and the
+  focus-scene handoff state (M5 territory). Honestly labeled UNVERIFIED→
+  verified: create/activate/delete + persistence loop exercised live on this
+  machine.

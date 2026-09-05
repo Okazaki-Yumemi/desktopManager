@@ -84,6 +84,12 @@ pub fn run() {
             commands::layout::layout_list,
             commands::layout::layout_apply,
             commands::layout::layout_delete,
+            commands::scene::scenes_list,
+            commands::scene::scene_create,
+            commands::scene::scene_rename,
+            commands::scene::scene_delete,
+            commands::scene::scene_set_visibility,
+            commands::scene::scene_visibility,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

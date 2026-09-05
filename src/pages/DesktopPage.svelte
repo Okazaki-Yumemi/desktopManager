@@ -1,11 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import {
+    Eye,
+    EyeOff,
     FileSymlink,
     FileText,
     Folder,
+    Layers,
     Plus,
     RotateCw,
     Search,
@@ -16,17 +20,24 @@
     assignExternalToCollection,
     assignToCollection,
     createCollection,
+    createScene,
     deleteCollection,
+    deleteScene,
     getCollectionItems,
     getDesktopItems,
+    getSceneVisibility,
+    getSetting,
     listCollections,
+    listScenes,
     openCollectionItem,
     openDesktopItem,
     rescanDesktop,
     searchDesktopItems,
+    setSceneVisibility,
+    setSetting,
     unassignFromCollection,
   } from "../services/backend";
-  import type { Collection, DesktopItem } from "../types/domain";
+  import type { Collection, DesktopItem, Scene } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
   import { formatDateShort } from "../lib/datetime";
   import { DESKTOP_CHANGED_EVENT } from "../lib/events";
@@ -45,6 +56,16 @@
   let creating = $state(false);
   let newName = $state("");
 
+  // Scenes: a scene hides some collections from the chips row (pure
+  // metadata — files are never touched). Collections without an explicit
+  // row are visible.
+  let scenes = $state<Scene[]>([]);
+  let activeSceneId = $state<number | null>(null);
+  let lastSceneId = $state<number | null>(null);
+  let sceneHidden = $state<Set<number>>(new SvelteSet());
+  let creatingScene = $state(false);
+  let newSceneName = $state("");
+
   // Pointer-based drag of an item card onto a collection chip (HTML5 DnD is
   // not usable here: with Tauri's native drop handler enabled it never fires).
   type DragState = { path: string; label: string; x: number; y: number; over: string | null };
@@ -55,6 +76,14 @@
   const hasQuery = $derived(query.trim().length > 0);
   const activeCollection = $derived(
     collections.find((c) => c.id === activeCollectionId) ?? null,
+  );
+  const visibleCollections = $derived(
+    activeSceneId === null
+      ? collections
+      : collections.filter((c) => !sceneHidden.has(c.id)),
+  );
+  const hiddenCollections = $derived(
+    activeSceneId === null ? [] : collections.filter((c) => sceneHidden.has(c.id)),
   );
 
   async function loadCollections() {
@@ -105,6 +134,7 @@
 
   onMount(() => {
     void loadCollections();
+    void initScenes();
     // The backend pushes desktop:changed only when the index really changed.
     const unlistenP = listen(DESKTOP_CHANGED_EVENT, () => {
       void reload();
@@ -217,6 +247,104 @@
     }
   }
 
+  // --- Scenes --------------------------------------------------------------
+
+  async function loadScenes() {
+    try {
+      scenes = await listScenes();
+    } catch (err) {
+      pushToast("error", `读取场景失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function loadSceneVisibility() {
+    if (activeSceneId === null) {
+      sceneHidden = new SvelteSet();
+      return;
+    }
+    try {
+      const rows = await getSceneVisibility(activeSceneId);
+      sceneHidden = new SvelteSet(rows.filter((r) => !r.visible).map((r) => r.collectionId));
+    } catch {
+      sceneHidden = new Set();
+    }
+  }
+
+  async function persistActiveScene() {
+    try {
+      await setSetting("ui.activeScene", activeSceneId);
+    } catch {
+      // Persistence is best-effort; the UI state is already correct.
+    }
+  }
+
+  /** Switch scenes; clicking the active scene restores the previous one. */
+  async function applyScene(id: number | null) {
+    if (activeSceneId === id) return;
+    lastSceneId = activeSceneId;
+    activeSceneId = id;
+    void persistActiveScene();
+    await loadSceneVisibility();
+  }
+
+  async function onSceneChip(id: number) {
+    await applyScene(activeSceneId === id ? lastSceneId : id);
+  }
+
+  async function toggleCollectionVisible(collectionId: number) {
+    if (activeSceneId === null) return;
+    const wasHidden = sceneHidden.has(collectionId);
+    try {
+      await setSceneVisibility(activeSceneId, collectionId, wasHidden);
+      const next = new SvelteSet(sceneHidden);
+      if (wasHidden) next.delete(collectionId);
+      else next.add(collectionId);
+      sceneHidden = next;
+    } catch (err) {
+      pushToast("error", `更新可见性失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function submitScene() {
+    if (!creatingScene) return;
+    creatingScene = false;
+    const name = newSceneName.trim();
+    if (!name) return;
+    try {
+      const scene = await createScene(name);
+      newSceneName = "";
+      await loadScenes();
+      await applyScene(scene.id);
+      pushToast("ok", `场景「${scene.name}」已创建`);
+    } catch (err) {
+      pushToast("error", `创建失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function removeScene(id: number) {
+    try {
+      await deleteScene(id);
+      if (activeSceneId === id) await applyScene(null);
+      await loadScenes();
+      pushToast("ok", "场景已删除");
+    } catch (err) {
+      pushToast("error", `删除失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function initScenes() {
+    await loadScenes();
+    try {
+      const saved = await getSetting<number | null>("ui.activeScene");
+      if (saved !== null && scenes.some((s) => s.id === saved)) {
+        activeSceneId = saved;
+        await loadSceneVisibility();
+      }
+    } catch {
+      // Fall back to 「全部」.
+    }
+  }
+
   // Pointer drag: threshold decides click vs drag; hit-test chips via
   // elementFromPoint so the ghost can stay pointer-events: none.
   function onItemPointerDown(e: PointerEvent, item: DesktopItem) {
@@ -299,6 +427,68 @@
     </button>
   </header>
 
+  <div class="chips scene-row" aria-label="场景切换">
+    <Layers size={13} class="scene-ico" />
+    <button
+      type="button"
+      class="chip"
+      class:active={activeSceneId === null}
+      onclick={() => void applyScene(null)}
+    >
+      全部
+    </button>
+    {#each scenes as sc (sc.id)}
+      <span class="chip-wrap">
+        <button
+          type="button"
+          class="chip"
+          class:active={activeSceneId === sc.id}
+          title="切换场景；再次点击可回到上一个场景"
+          onclick={() => void onSceneChip(sc.id)}
+        >
+          {sc.name}
+        </button>
+        {#if activeSceneId === sc.id}
+          <button
+            type="button"
+            class="chip-del"
+            title="删除场景"
+            onclick={() => void removeScene(sc.id)}
+          >
+            <X size={12} />
+          </button>
+        {/if}
+      </span>
+    {/each}
+    {#if creatingScene}
+      <span class="chip create-chip">
+        <input
+          bind:value={newSceneName}
+          placeholder="场景名称，回车确认"
+          maxlength="30"
+          use:focusOnMount
+          onkeydown={(e) => {
+            if (e.key === "Enter") void submitScene();
+            if (e.key === "Escape") creatingScene = false;
+          }}
+          onblur={() => void submitScene()}
+        />
+      </span>
+    {:else}
+      <button
+        type="button"
+        class="chip add"
+        onclick={() => {
+          creatingScene = true;
+          newSceneName = "";
+        }}
+      >
+        <Plus size={13} />
+        新建场景
+      </button>
+    {/if}
+  </div>
+
   <div class="chips" aria-label="集合筛选">
     <button
       type="button"
@@ -308,7 +498,7 @@
     >
       全部
     </button>
-    {#each collections as col (col.id)}
+    {#each visibleCollections as col (col.id)}
       <span class="chip-wrap">
         <button
           type="button"
@@ -323,6 +513,16 @@
           {col.name}
           <span class="count">{col.itemCount}</span>
         </button>
+        {#if activeSceneId !== null}
+          <button
+            type="button"
+            class="chip-del"
+            title="在当前场景隐藏这个集合"
+            onclick={() => void toggleCollectionVisible(col.id)}
+          >
+            <Eye size={12} />
+          </button>
+        {/if}
         {#if activeCollectionId === col.id}
           <button
             type="button"
@@ -333,6 +533,27 @@
             <X size={12} />
           </button>
         {/if}
+      </span>
+    {/each}
+    {#each hiddenCollections as col (col.id)}
+      <span class="chip-wrap">
+        <button
+          type="button"
+          class="chip dim"
+          title="在当前场景中已隐藏"
+          onclick={() => (activeCollectionId = col.id)}
+        >
+          {col.name}
+          <span class="count">{col.itemCount}</span>
+        </button>
+        <button
+          type="button"
+          class="chip-del"
+          title="在当前场景显示这个集合"
+          onclick={() => void toggleCollectionVisible(col.id)}
+        >
+          <EyeOff size={12} />
+        </button>
       </span>
     {/each}
     {#if activeCollectionId !== null}
@@ -592,6 +813,18 @@
 
   .chip-del:hover {
     color: var(--error);
+  }
+
+  .scene-row .chip {
+    background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
+  }
+
+  .scene-ico {
+    color: var(--text-tertiary);
+  }
+
+  .chip.dim {
+    opacity: 0.45;
   }
 
   .remove-chip {

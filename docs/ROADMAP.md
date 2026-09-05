@@ -43,6 +43,8 @@ Untested Win32 claims are forbidden — everything here needs WINDOWS_TESTED.
 
 ## M4 — Scenes
 
+> **Status: core delivered 2026-09-05** — scene CRUD + per-scene collection visibility + switcher + restore-previous (D16). Deferred: per-scene global shortcuts, focus-scene handoff (with M5), geometry columns.
+
 Create/edit scenes, per-scene collection visibility/layout, scene switcher,
 keyboard shortcuts, restore previous scene, focus-scene handoff state.
 

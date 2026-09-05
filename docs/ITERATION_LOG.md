@@ -1,4 +1,14 @@
 
+## 2026-09-05 — Round 8: M4 场景核心 + 白屏修复
+
+- 白屏根因：dev 重启竞态导致 webview 首次加载失败卡白；重启 dev 会话修复。
+- 场景（0003 表首次启用）：scenes_repo CRUD + set_visible upsert + visibility
+  JOIN（孤儿行过滤）；6 个 scene 命令；桌面页场景行（Layers 图标、全部、
+  新建场景）+ 集合眼睛开关（隐藏=变暗仍可见，一键恢复）+ 再点当前场景回到
+  上一个场景 + ui.activeScene 持久化（D16）。
+- 真机验证：建「测试场景」→ 激活 → 集合眼睛出现 → 删除 → settings 回写 null；
+  30 单测全绿，clippy/svelte-check/eslint 0。
+
 ## 2026-09-05 — Round 7: M3 桌面布局快照/恢复（LVM 通道）
 
 - 迁移 0007：`layout_snapshots.name`（唯一索引）；0002 建的表首次接上产品功能。

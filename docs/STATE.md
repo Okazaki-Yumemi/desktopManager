@@ -34,7 +34,7 @@
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-M3 core **delivered 2026-09-05**: layout snapshot/restore via the verified LVM route + canary auto-arrange guard; live read/canary passed, UI awaiting one user pass. Next: **M4 — Scenes**. Deferred: Explorer-restart persistence re-apply.
+M4 core **delivered 2026-09-05** (scenes: switcher, per-scene collection visibility, restore-previous, persisted active scene; live loop verified). M3 core delivered 2026-09-05: layout snapshot/restore via the verified LVM route + canary auto-arrange guard; live read/canary passed, UI awaiting one user pass. Next: **M4 — Scenes**. Deferred: Explorer-restart persistence re-apply.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -161,3 +161,6 @@ M3 core **delivered 2026-09-05**: layout snapshot/restore via the verified LVM r
 - 2026-09-05: release build OK; MSI built; app launches, migrations to v5,
   settings/theme persistence verified (node:sqlite inspection + log file).
 - 2026-09-05: pnpm test 3/3 pass; svelte-check 0 err; eslint 0 err; vite build ok.
+- 2026-09-05 (M4 core, WINDOWS_TESTED): scene create/activate/delete +
+  ui.activeScene persistence exercised live in the running app; 30 unit
+  tests, clippy/svelte-check/eslint 0.

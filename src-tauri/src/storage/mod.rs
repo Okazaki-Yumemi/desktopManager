@@ -2,6 +2,7 @@ pub mod collections_repo;
 pub mod desktop_repo;
 pub mod layout_repo;
 pub mod migrations;
+pub mod scenes_repo;
 pub mod settings_repo;
 
 use std::path::Path;

@@ -58,3 +58,17 @@ export interface LayoutApplyReport {
   missing: number;
   diverged: number;
 }
+
+/// A named arrangement of collections (storage::scenes_repo::Scene).
+export interface Scene {
+  id: number;
+  name: string;
+  color: string | null;
+  sortOrder: number;
+}
+
+/// Visibility of one collection inside a scene (missing rows = visible).
+export interface SceneLayout {
+  collectionId: number;
+  visible: boolean;
+}
