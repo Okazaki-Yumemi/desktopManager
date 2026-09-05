@@ -48,6 +48,13 @@ pub fn run() {
             commands::desktop::desktop_rescan,
             commands::desktop::desktop_open,
             commands::desktop::desktop_icon,
+            commands::desktop::collections_list,
+            commands::desktop::collection_create,
+            commands::desktop::collection_rename,
+            commands::desktop::collection_delete,
+            commands::desktop::collection_assign,
+            commands::desktop::collection_unassign,
+            commands::desktop::collection_items,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

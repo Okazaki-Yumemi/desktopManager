@@ -33,3 +33,11 @@ export interface SyncOutcome {
   updated: number;
   removed: number;
 }
+
+/// A virtual collection (mirrors storage::collections_repo::Collection).
+export interface Collection {
+  id: number;
+  name: string;
+  color: string;
+  itemCount: number;
+}

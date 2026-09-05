@@ -27,8 +27,9 @@ lazy bounded icon cache, open item via shell, search, virtual collections,
 drag/drop assignment, persistence. **Fallback-first: the app must be fully
 useful with zero shell integration.**
 
-Status: core landed + WINDOWS_TESTED 2026-09-05 (discovery, watcher, index,
-open, search, Chinese UI). Remaining: icon cache; collections + drag/drop.
+Status: **complete, WINDOWS_TESTED 2026-09-05** — discovery, watcher, index,
+open, search, icon cache, and virtual collections with drag/drop assignment
+(required `dragDropEnabled: false`, see DECISIONS D12).
 
 ## M3 — Windows Shell Integration
 

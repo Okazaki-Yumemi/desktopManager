@@ -196,7 +196,7 @@ impl<'a> DesktopRepo<'a> {
     }
 }
 
-fn map_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<DesktopItem> {
+pub(crate) fn map_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<DesktopItem> {
     Ok(DesktopItem {
         id: row.get(0)?,
         path: row.get(1)?,

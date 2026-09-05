@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/lib/datetime.test.ts","./src/lib/datetime.ts","./src/lib/events.ts","./src/lib/iconcache.ts","./src/services/backend.ts","./src/stores/router.svelte.ts","./src/stores/theme.svelte.ts","./src/stores/toast.svelte.ts","./src/types/domain.ts"],"version":"5.9.3"}

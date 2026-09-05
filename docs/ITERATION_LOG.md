@@ -1,4 +1,34 @@
 
+## 2026-09-05 — Round 5: M2 virtual collections + drag assignment (M2 complete)
+
+**Shipped:**
+
+- `collections_repo` (list with item counts / create / rename / delete /
+  assign / unassign / items-of-collection) + 7 `collection_*` commands.
+  Assignment is metadata-only and allow-listed to indexed paths (same policy
+  as open/icon); delete removes assignments explicitly so it holds regardless
+  of the foreign_keys pragma.
+- DesktopPage: collections bar — 全部 chip, per-collection chips (color dot +
+  live count), inline 新建集合 input (Enter/blur submit, Esc cancel, palette
+  color rotation), per-collection 删除 button, 移出集合 drop chip while a
+  collection is active. HTML5 dragstart on item cards, drop targets on chips;
+  toast feedback; collection view filters the grid (search box narrows it
+  client-side).
+
+**Debugged for real:** drag assignment was dead in the running app. Synthetic
+drags were not the cause — the user confirmed real drags no-oped too. Root
+cause: Tauri 2's `dragDropEnabled: true` default puts a native OLE drop
+handler on WebView2 that swallows in-page HTML5 dragstart/drop on Windows.
+`dragDropEnabled: false` in tauri.conf.json fixed it (D12); **the user
+manually verified drag-drop works**.
+
+Tests: cargo test 21/21 (4 new repo tests: roundtrip+order, allow-list
+rejection, duplicate names + rename, delete cascade + missing hidden),
+clippy 0, fmt clean; svelte-check 0, eslint 0, vitest 3/3, vite build ok.
+
+**Next:** M3 shell integration on the verified LVM route (snapshot/restore
+wired to collections; canary auto-arrange detection before batch moves).
+
 ## 2026-09-05 — Round 3: M2 core (Desktop Index) + Chinese UI
 
 **Shipped:**

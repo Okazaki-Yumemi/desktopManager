@@ -31,20 +31,19 @@
 
 ## Current milestone
 
-M0, M1 complete. **M2 — Desktop Index: core landed and WINDOWS_TESTED**
-(discovery, scanner, index, debounced watcher, open, search, Chinese UI).
-Still open inside M2: virtual collections + drag/drop assignment
-(icons are done, see below). Next after that: **M3 — Shell Integration** on the
-verified LVM route.
+M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
+(discovery, scanner, index, debounced watcher, open, search, shell icons,
+virtual collections + drag/drop assignment, Chinese UI).
+Next: **M3 — Shell Integration** on the verified LVM route.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
 - Tauri 2 project skeleton, plain Svelte 5 + Vite 7 + TS frontend (no SvelteKit).
 - Rust backend modules: `app/` (state, error, logging, shell/tray, shortcuts),
-  `desktop/` (discovery, scanner, watcher, service, open), `storage/` (SQLite,
-  migrations 1–5, settings + desktop repos), `commands/` (app_info, settings,
-  shortcuts_get, desktop_list/search/rescan/open). cargo test 14/14, clippy
-  clean, fmt clean.
+  `desktop/` (discovery, scanner, watcher, service, open, icons), `storage/`
+  (SQLite, migrations 1–5, settings + desktop + collections repos),
+  `commands/` (app_info, settings, shortcuts_get, desktop_list/search/rescan/
+  open/icon, collections_*). cargo test 21/21, clippy clean, fmt clean.
 - Design tokens (light/dark + 5 accent presets), sidebar shell, Today page,
   Settings page (theme + accent persistence through SQLite).
 - **UI language: Chinese (D9, user decision)** — pages, tray menu, dates
@@ -74,6 +73,14 @@ verified LVM route.
     target icons all render.
   - Frontend 桌面 page: grid with real shell icons, size/date sublines, 公用
     badges, debounced search, refresh button, `desktop:changed` listener.
+  - **Virtual collections (WINDOWS_TESTED)**: collections bar (全部 / 集合
+    chips / 新建集合 inline input / 移出集合 drop chip when filtered).
+    Backend `collections_repo` + `collection_*` commands; assignment is
+    metadata-only with the same indexed-path allow-list as open/icon.
+    Create-via-UI, filter, item counts verified live; drag-drop assignment
+    verified manually by the user after the `dragDropEnabled: false` fix
+    (see D12 — Tauri's default OLE drop handler swallows in-page HTML5 DnD
+    on Windows/WebView2).
 - Release build ~5.1 MB runs; MSI built. NSIS bundle failed once (network
   timeout downloading NSIS) — retry later.
 - **Windows shell probe** (`probe/shell_probe`): COM `IFolderView` route
@@ -82,8 +89,6 @@ verified LVM route.
 
 ## What is broken / unfinished
 
-- M2 remainder: virtual collections + drag/drop assignment UI (schema
-  `collections`/`collection_items` already exists).
 - NSIS installer bundle (network timeout — retry `corepack pnpm tauri build`).
 - Explorer-restart persistence test — deferred to a dedicated session
   (snapshot before killing explorer).
@@ -92,14 +97,16 @@ verified LVM route.
 - Command palette itself is M6; the global shortcut currently toggles the
   window.
 - No CI yet.
+- With `dragDropEnabled: false` the app no longer accepts files dragged from
+  Explorer onto the window (we never used that channel; revisit only if a
+  future milestone wants it).
 
 ## Next actions
 
-1. M2 remainder: virtual collections + drag/drop assignment.
-2. M3: shell integration on the verified LVM route (see
+1. M3: shell integration on the verified LVM route (see
    docs/WINDOWS_SHELL_PROBE.md + DECISIONS D8), incl. canary auto-arrange
-   detection.
-3. Retry NSIS bundle build.
+   detection. Start with layout snapshot/restore wired to collections.
+2. Retry NSIS bundle build.
 
 ## Known blockers
 
@@ -108,6 +115,16 @@ verified LVM route.
 
 ## Test results log (latest first)
 
+- 2026-09-05 (M2 collections, WINDOWS_TESTED): collection created via inline
+  input (toast, auto-switch to it, empty-state hint); filter chips with live
+  item counts; 移出集合 drop chip appears only when a collection is active;
+  chip 删除 button only on the active collection. HTML5 drag-drop assignment
+  did not work initially — root cause: Tauri `dragDropEnabled: true` default
+  installs an OLE drop handler on WebView2 that swallows in-page dragstart/
+  drop; fixed by setting `dragDropEnabled: false` in tauri.conf.json and
+  **verified working by the user manually**. cargo test 21/21 (4 new
+  collections-repo tests incl. allow-list rejection + idempotency), clippy 0,
+  fmt clean; svelte-check 0, eslint 0, vitest 3/3, vite build ok.
 - 2026-09-05 (M2 core, WINDOWS_TESTED): real `D:\Desktop` indexed (24 items,
   correct kinds, user+public sources). Watcher: create file → auto rescan
   `added=1` in <2 s; delete → `removed=1`, history row `missing=1`. Open via

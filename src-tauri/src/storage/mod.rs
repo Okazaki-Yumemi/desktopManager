@@ -1,3 +1,4 @@
+pub mod collections_repo;
 pub mod desktop_repo;
 pub mod migrations;
 pub mod settings_repo;

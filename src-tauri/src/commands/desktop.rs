@@ -8,6 +8,7 @@ use crate::app::state::{lock_db, AppState};
 use crate::desktop::icons::{extract_cached, IconPayload};
 use crate::desktop::open::open_with_shell;
 use crate::desktop::service;
+use crate::storage::collections_repo::{Collection, CollectionsRepo};
 use crate::storage::desktop_repo::{DesktopItem, DesktopRepo, SyncOutcome};
 
 #[tauri::command]
@@ -78,4 +79,61 @@ pub struct IconPayloadDto {
     pub width: i32,
     pub height: i32,
     pub rgba: String,
+}
+
+// --- Virtual collections (metadata only; never touches real files) ---
+
+#[tauri::command]
+pub fn collections_list(state: State<'_, AppState>) -> AppResult<Vec<Collection>> {
+    let mut db = lock_db(&state)?;
+    CollectionsRepo::new(db.conn()).list()
+}
+
+#[tauri::command]
+pub fn collection_create(
+    state: State<'_, AppState>,
+    name: String,
+    color: String,
+) -> AppResult<Collection> {
+    let mut db = lock_db(&state)?;
+    let created = CollectionsRepo::new(db.conn()).create(&name, &color)?;
+    tracing::info!(id = created.id, name = %created.name, "collection created");
+    Ok(created)
+}
+
+#[tauri::command]
+pub fn collection_rename(state: State<'_, AppState>, id: i64, name: String) -> AppResult<()> {
+    let mut db = lock_db(&state)?;
+    CollectionsRepo::new(db.conn()).rename(id, &name)
+}
+
+#[tauri::command]
+pub fn collection_delete(state: State<'_, AppState>, id: i64) -> AppResult<()> {
+    let mut db = lock_db(&state)?;
+    CollectionsRepo::new(db.conn()).delete(id)?;
+    tracing::info!(id, "collection deleted");
+    Ok(())
+}
+
+/// Assign an indexed item to a collection. Returns whether it was new.
+#[tauri::command]
+pub fn collection_assign(state: State<'_, AppState>, id: i64, path: String) -> AppResult<bool> {
+    let mut db = lock_db(&state)?;
+    let created = CollectionsRepo::new(db.conn()).assign(id, &path)?;
+    if created {
+        tracing::info!(collection_id = id, path, "item assigned to collection");
+    }
+    Ok(created)
+}
+
+#[tauri::command]
+pub fn collection_unassign(state: State<'_, AppState>, id: i64, path: String) -> AppResult<bool> {
+    let mut db = lock_db(&state)?;
+    CollectionsRepo::new(db.conn()).unassign(id, &path)
+}
+
+#[tauri::command]
+pub fn collection_items(state: State<'_, AppState>, id: i64) -> AppResult<Vec<DesktopItem>> {
+    let mut db = lock_db(&state)?;
+    CollectionsRepo::new(db.conn()).items(id)
 }
