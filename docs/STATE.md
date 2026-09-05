@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-05.
+> Update after every significant work session. Last updated: 2026-09-06.
 
 ## Project identity
 
@@ -34,7 +34,7 @@
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. M6 core **delivered 2026-09-05** (tasks: quick capture Ctrl+N, todo/doing/done cycling, priority/due/notes inline editing, status filters + search; calendar: Monday-start week grid with click-to-create hour slots, all-day + timed events, task linking, day agenda; FocusPage binds a task into the session). Backend is unit-tested; frontend passed svelte-check/eslint plus a degraded browser smoke (structure, empty states, creator prefill) over vite dev without the Tauri backend — in-app visual pass left for the user, so treat both pages as TESTED (not WINDOWS_TESTED/USER_VERIFIED yet). M7 core **delivered 2026-09-05** (appearance presets standard/soft/sharp/OLED-dark, comfortable/compact density, glass strength off/soft/normal/strong, motion standard/reduced/off — all data-attribute + token driven, persisted via the settings table, D20). Calendar month view delivered 2026-09-05 night round (42-cell Monday-first grid, per-day event dots, dimmed out-month cells, click selects the day agenda, dblclick opens the all-day creator, 周/月 toggle persisted as ui.calendarView). Completion chime (WebAudio two-tone, on by default, toggle in a new Settings 通知 section, ui.sound) and a custom accent color picker (inline var overrides + ui.accentCustom, cleared when a preset is chosen) landed 2026-09-06. Next: **M8 — Reliability**. Deferred: Explorer-restart persistence re-apply; icon sizes, performance mode, layout presets (M7 leftovers).
+M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. M6 core **delivered 2026-09-05** (tasks: quick capture Ctrl+N, todo/doing/done cycling, priority/due/notes inline editing, status filters + search; calendar: Monday-start week grid with click-to-create hour slots, all-day + timed events, task linking, day agenda; FocusPage binds a task into the session). Backend is unit-tested; frontend passed svelte-check/eslint plus a degraded browser smoke (structure, empty states, creator prefill) over vite dev without the Tauri backend — in-app visual pass left for the user, so treat both pages as TESTED (not WINDOWS_TESTED/USER_VERIFIED yet). M7 core **delivered 2026-09-05** (appearance presets standard/soft/sharp/OLED-dark, comfortable/compact density, glass strength off/soft/normal/strong, motion standard/reduced/off — all data-attribute + token driven, persisted via the settings table, D20). Calendar month view delivered 2026-09-05 night round (42-cell Monday-first grid, per-day event dots, dimmed out-month cells, click selects the day agenda, dblclick opens the all-day creator, 周/月 toggle persisted as ui.calendarView). Completion chime (WebAudio two-tone, on by default, toggle in a new Settings 通知 section, ui.sound) and a custom accent color picker (inline var overrides + ui.accentCustom, cleared when a preset is chosen) landed 2026-09-06. Desktop icon size (small/medium/large via ui.iconSize → data-icon-size → --desktop-cell/--desktop-icon consumed by the desktop grid) landed 2026-09-06; its live smoke exposed and fixed D21 (Chromium rejects dashed dataset writes — enumPref now uses setAttribute). Next: **M8 — Reliability**. Deferred: Explorer-restart persistence re-apply; performance mode, layout presets (M7 leftovers).
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -120,6 +120,19 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-06 (icon size, TESTED): svelte-check 0/0, eslint 0, vitest 6/6.
+  Degraded browser smoke over vite dev: 设置 图标大小 小/中/大 each flips
+  data-icon-size and computed --desktop-cell/--desktop-icon (185px/28px,
+  230px/36px, 290px/44px); a scoped probe element confirms the desktop
+  grid minmax tracks re-pack (4 → 3 columns on 大, icon 28/36/44px) and
+  reload applies the attribute at startup via load(). The live smoke
+  found a real bug: dataset["icon-size"] throws SyntaxError on Chromium
+  ("not a valid property name", thrown after the state assignment) —
+  enumPref fixed to setAttribute (D21); earlier M7 prefs were unaffected
+  (dash-free names). Degraded-mode persistence is impossible by design
+  (no Tauri backend): DB roundtrip and real-app visual pass left for the
+  user's session, so TESTED, not WINDOWS_TESTED/USER_VERIFIED.
 
 - 2026-09-06 (chime + custom accent, TESTED): svelte-check 0/0; eslint 0;
   vitest 6/6. Degraded browser smoke: setting the color input to #e91e63

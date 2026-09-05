@@ -226,3 +226,17 @@ same way so external items render real shell icons.
   the light theme it is honestly a no-op rather than a broken hybrid.
   Motion `off` zeroes the duration tokens and force-disables transitions and
   keyframes globally.
+
+## D21 — Write `data-*` attributes with setAttribute, not the dataset setter (2026-09-06, R15)
+
+- The desktop icon-size preference (ui.iconSize) is the first enumPref whose
+  attribute name contains a dash (`data-icon-size`). Live smoke showed the
+  value updating in Svelte state while the attribute never appeared: on
+  Chromium/WebView2 `documentElement.dataset["icon-size"] = …` throws
+  `SyntaxError: Failed to set a named property 'icon-size' on 'DOMStringMap':
+  'icon-size' is not a valid property name` — after the in-memory assignment
+  has already run, so the UI looks half-broken rather than dead. Dash-free
+  names (surface/density/glass/motion) never hit this path.
+- enumPref now writes through `setAttribute("data-" + attr, …)` in both
+  load() and set(), always with the full literal attribute name. Rule for
+  future code: never index `dataset` with a dashed name on the write path.

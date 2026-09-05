@@ -4,6 +4,7 @@
     ACCENT_PRESETS,
     DENSITY_OPTIONS,
     GLASS_OPTIONS,
+    ICON_SIZE_OPTIONS,
     MOTION_OPTIONS,
     SURFACE_PRESETS,
     densityPref,
@@ -11,6 +12,7 @@
     getCustomAccent,
     getThemePreference,
     glassPref,
+    iconSizePref,
     motionPref,
     setAccentPreference,
     setCustomAccent,
@@ -19,6 +21,7 @@
     type AccentPreference,
     type DensityPreference,
     type GlassPreference,
+    type IconSizePreference,
     type MotionPreference,
     type SurfacePreference,
     type ThemePreference,
@@ -110,6 +113,7 @@
   const currentMotion = $derived(motionPref.get());
   const customAccent = $derived(getCustomAccent());
   const soundOn = $derived(isSoundEnabled());
+  const currentIconSize = $derived(iconSizePref.get());
 
   async function chooseSurface(value: SurfacePreference) {
     try {
@@ -156,6 +160,14 @@
       await setSoundEnabled(value);
     } catch (err) {
       pushToast("error", `无法保存提示音偏好：${String(err)}`);
+    }
+  }
+
+  async function chooseIconSize(value: IconSizePreference) {
+    try {
+      await iconSizePref.set(value);
+    } catch (err) {
+      pushToast("error", `无法保存图标大小：${String(err)}`);
     }
   }
 
@@ -383,6 +395,25 @@
             onclick={() => chooseDensity(d.value)}
           >
             {d.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">图标大小</span>
+        <span class="row-desc">桌面项目网格的列宽与图标框大小。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="图标大小">
+        {#each ICON_SIZE_OPTIONS as s (s.value)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={currentIconSize === s.value}
+            class:active={currentIconSize === s.value}
+            onclick={() => chooseIconSize(s.value)}
+          >
+            {s.label}
           </button>
         {/each}
       </div>

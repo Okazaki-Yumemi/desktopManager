@@ -198,11 +198,13 @@ function enumPref<T extends string>(
       } catch {
         // Backend unavailable (e.g. plain browser dev): keep the default.
       }
-      document.documentElement.dataset[attr] = value;
+      // setAttribute, not dataset: the dataset setter rejects dashed names
+      // such as "icon-size" with a SyntaxError on Chromium.
+      document.documentElement.setAttribute(`data-${attr}`, value);
     },
     set: async (v: T) => {
       value = v;
-      document.documentElement.dataset[attr] = v;
+      document.documentElement.setAttribute(`data-${attr}`, v);
       await setSetting(key, v);
     },
   };
@@ -212,6 +214,7 @@ export type SurfacePreference = "standard" | "soft" | "sharp" | "oled";
 export type DensityPreference = "comfortable" | "compact";
 export type GlassPreference = "off" | "soft" | "normal" | "strong";
 export type MotionPreference = "standard" | "reduced" | "off";
+export type IconSizePreference = "small" | "medium" | "large";
 
 export const SURFACE_PRESETS: ReadonlyArray<{ value: SurfacePreference; label: string }> = [
   { value: "standard", label: "标准" },
@@ -236,6 +239,12 @@ export const MOTION_OPTIONS: ReadonlyArray<{ value: MotionPreference; label: str
   { value: "standard", label: "标准" },
   { value: "reduced", label: "减弱" },
   { value: "off", label: "关闭" },
+];
+
+export const ICON_SIZE_OPTIONS: ReadonlyArray<{ value: IconSizePreference; label: string }> = [
+  { value: "small", label: "小" },
+  { value: "medium", label: "中" },
+  { value: "large", label: "大" },
 ];
 
 export const surfacePref = enumPref<SurfacePreference>(
@@ -264,4 +273,11 @@ export const motionPref = enumPref<MotionPreference>(
   "motion",
   MOTION_OPTIONS.map((p) => p.value),
   "standard",
+);
+
+export const iconSizePref = enumPref<IconSizePreference>(
+  "ui.iconSize",
+  "icon-size",
+  ICON_SIZE_OPTIONS.map((p) => p.value),
+  "medium",
 );

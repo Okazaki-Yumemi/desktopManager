@@ -12,6 +12,7 @@
   import {
     densityPref,
     glassPref,
+    iconSizePref,
     loadAccentPreference,
     loadCustomAccent,
     loadThemePreference,
@@ -33,6 +34,7 @@
     void motionPref.load();
     void loadSoundPreference();
     void loadCustomAccent();
+    void iconSizePref.load();
     void initWallpaper();
     return watchSystemTheme();
   });

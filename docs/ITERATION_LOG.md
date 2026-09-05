@@ -1,3 +1,19 @@
+## 2026-09-06 — Round 15: 桌面图标大小设置（M7 遗留收尾）
+
+- 设置页「外观」新增 图标大小 行（小/中/大，ui.iconSize，走 enumPref 工厂 →
+  data-icon-size）；tokens.css 定义 --desktop-cell/--desktop-icon 三档
+  （185/230/290px 单元宽与 28/36/44px 图标边长），DesktopPage 网格与图标
+  改为消费变量，自动填充列数随档位自然重排。
+- 冒烟发现真 bug：Chromium 的 dataset setter 拒绝带连字符的属性名
+  （dataset["icon-size"] 抛 SyntaxError，且抛在内存赋值之后，UI 呈半生效态）；
+  enumPref 改为 setAttribute("data-…")（D21）。早前四偏好属性名无连字符，
+  未受影响。
+- 降级浏览器冒烟：三档切换后 data-icon-size 与计算值全部正确
+  （185/28、230/36、290/44）；作用域探针元素证实桌面网格 minmax 重排
+  （大档 4→3 列、图标 28/36/44px）；重载后 load() 正常落 attribute。
+  svelte-check 0 / eslint 0 / vitest 6。
+- **下一步：** M8 离线可靠性切片（损坏 DB 恢复 + 数百文件规模测试）。
+
 ## 2026-09-06 — Round 14: 专注完成提示音 + 自定义强调色
 
 - chime.svelte.ts：WebAudio 双音提示（专注结束 E5→A5 上行，休息结束下行），

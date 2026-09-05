@@ -186,3 +186,18 @@
   animation: none !important;
   transition: none !important;
 }
+
+/* Desktop item density (M7 leftover): grid column width + icon box size.
+   The default (no attribute) is "medium". */
+:root {
+  --desktop-cell: 230px;
+  --desktop-icon: 36px;
+}
+:root[data-icon-size="small"] {
+  --desktop-cell: 185px;
+  --desktop-icon: 28px;
+}
+:root[data-icon-size="large"] {
+  --desktop-cell: 290px;
+  --desktop-icon: 44px;
+}

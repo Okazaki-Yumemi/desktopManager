@@ -1138,7 +1138,7 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--desktop-cell, 230px), 1fr));
     gap: var(--space-3);
   }
 
@@ -1171,8 +1171,8 @@
   .icon {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: var(--desktop-icon, 36px);
+    height: var(--desktop-icon, 36px);
     border-radius: var(--radius-s);
     flex-shrink: 0;
     color: var(--text-secondary);
