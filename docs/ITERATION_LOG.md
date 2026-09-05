@@ -1,3 +1,26 @@
+## 2026-09-05 — Round 9: M5 专注核心（数据库即时钟）
+
+- focus_sessions（0005 表首次启用）：focus_repo start（运行中拒绝再开、
+  task/scene id 存在性校验、count_up 计划时长记 0）/ running 恢复 / finish
+  （completed|abandoned，实际时长取墙钟差）/ 打断计数 / 笔记 / 按日列表 /
+  近 N 天汇总（SQLite localtime 分桶，本地日期串由前端计算）。
+- FocusPage：预设 25/5、50/10、自定义分钟、正计时；大倒计时 + 进度条 +
+  超时状态；打断/完成/放弃；备注失焦即存；场景绑定下拉 + 一键应用场景
+  （soft，写 ui.activeScene，不强切）；今日记录 + 近 7 天条形汇总；预设
+  持久化 focus.preset。恢复语义：页面挂载读 running 行，重启不丢计时；
+  页面打开时到点自动完成并进入休息，恢复的超时会话绝不自动判定（D17）。
+- eslint 新规则：$state 包裹 SvelteSet 报错——DesktopPage sceneHidden 改为
+  纯 SvelteSet 变更（clear/add/delete），FocusPage 全程遵守。
+- 验证：cargo test 36/36（另 2 个 ignored 真机用例）、clippy 0、
+  svelte-check 0、eslint 0；真机冒烟：开始→（用户）备注→完成 00:34→
+  toast+自动休息→跳过休息→待开始；用户自测了一条 00:02 放弃记录；
+  node:sqlite 确认 2 行落库 + focus.preset 持久化。
+- 同日用户确认 M3/M4 两项手动测试通过：外部快捷方式拖入集合、设置页
+  布局保存→应用。M3 布局恢复至此 USER_VERIFIED。
+- 遗留：托盘计时状态、迷你计时窗、结束提示音、任务绑定 UI（M6 后补）。
+
+**下一步：** M6 — 任务 + 日历（todo/doing/done、快速捕获 Ctrl+N）。
+
 
 ## 2026-09-05 — Round 8: M4 场景核心 + 白屏修复
 

@@ -161,3 +161,25 @@ same way so external items render real shell icons.
   focus-scene handoff state (M5 territory). Honestly labeled UNVERIFIED→
   verified: create/activate/delete + persistence loop exercised live on this
   machine.
+## D17 — Focus sessions use the database as the clock (2026-09-05, M5)
+
+- A running focus session is a focus_sessions row with started_at; elapsed
+  time is derived from it at read time (UI ticks drive the display only). A
+  crash, restart or webview reload cannot lose a running session: the Focus
+  page recovers it via focus_running() on mount and keeps counting.
+  start() refuses while another row is running, so zombie running rows
+  cannot accumulate.
+- V1 semantics: sessions end as completed or abandoned with
+  actual_duration_s = (ended_at - started_at) in whole seconds; mid-session
+  interruptions are tallied in the interruptions column (the schema's
+  `interrupted` status stays reserved). Breaks between blocks are UI-only
+  and not persisted — closing the app during a break loses only the break.
+- Crossing the planned duration while the page is open auto-completes and
+  starts the preset break. A session recovered already past its plan is
+  never auto-judged: the user chooses 完成/放弃 (over-time is shown).
+- Task binding exists in schema/commands (task_id) but the UI exposes only
+  scene binding until M6 ships the task list. Scene integration is soft: a
+  one-click 应用场景 writes ui.activeScene (the M4 key), never forced; no
+  app blocking in V1.
+- Deferred from the M5 line: tray timer state, compact timer window, audio
+  notification on phase end.

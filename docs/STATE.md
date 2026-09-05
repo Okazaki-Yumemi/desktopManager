@@ -34,7 +34,7 @@
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-M4 core **delivered 2026-09-05** (scenes: switcher, per-scene collection visibility, restore-previous, persisted active scene; live loop verified). M3 core delivered 2026-09-05: layout snapshot/restore via the verified LVM route + canary auto-arrange guard; live read/canary passed, UI awaiting one user pass. Next: **M4 — Scenes**. Deferred: Explorer-restart persistence re-apply.
+M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. Next: **M6 — Tasks + Calendar**. Deferred: Explorer-restart persistence re-apply.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -164,3 +164,12 @@ M4 core **delivered 2026-09-05** (scenes: switcher, per-scene collection visibil
 - 2026-09-05 (M4 core, WINDOWS_TESTED): scene create/activate/delete +
   ui.activeScene persistence exercised live in the running app; 30 unit
   tests, clippy/svelte-check/eslint 0.
+- 2026-09-05 (M3/M4 manual passes, USER_VERIFIED): the user confirmed both
+  outstanding manual tests passed — dragging an external shortcut from
+  Explorer into a collection, and Settings 桌面布局快照 保存→应用 on the real
+  desktop (layout restore now USER_VERIFIED end to end).
+- 2026-09-05 (M5 core, WINDOWS_TESTED): focus start → note → complete live
+  (00:34 block, note shown, ok toast, auto-break 5:00, 跳过休息 → idle);
+  preset switching live; the user also ran a start→abandon block themselves
+  (00:02). DB verified via node:sqlite (2 rows correct, focus.preset
+  persisted). 36 unit tests, clippy 0, svelte-check 0, eslint 0.

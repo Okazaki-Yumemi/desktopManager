@@ -62,7 +62,9 @@
   let scenes = $state<Scene[]>([]);
   let activeSceneId = $state<number | null>(null);
   let lastSceneId = $state<number | null>(null);
-  let sceneHidden = $state<Set<number>>(new SvelteSet());
+  // SvelteSet is self-reactive (mutations and clear() update derived state),
+  // so it must NOT be wrapped in $state.
+  let sceneHidden = new SvelteSet<number>();
   let creatingScene = $state(false);
   let newSceneName = $state("");
 
@@ -258,15 +260,15 @@
   }
 
   async function loadSceneVisibility() {
-    if (activeSceneId === null) {
-      sceneHidden = new SvelteSet();
-      return;
-    }
+    sceneHidden.clear();
+    if (activeSceneId === null) return;
     try {
       const rows = await getSceneVisibility(activeSceneId);
-      sceneHidden = new SvelteSet(rows.filter((r) => !r.visible).map((r) => r.collectionId));
+      for (const r of rows) {
+        if (!r.visible) sceneHidden.add(r.collectionId);
+      }
     } catch {
-      sceneHidden = new Set();
+      // Treat a failed read as "everything visible"; the chips stay usable.
     }
   }
 
@@ -296,10 +298,8 @@
     const wasHidden = sceneHidden.has(collectionId);
     try {
       await setSceneVisibility(activeSceneId, collectionId, wasHidden);
-      const next = new SvelteSet(sceneHidden);
-      if (wasHidden) next.delete(collectionId);
-      else next.add(collectionId);
-      sceneHidden = next;
+      if (wasHidden) sceneHidden.delete(collectionId);
+      else sceneHidden.add(collectionId);
     } catch (err) {
       pushToast("error", `更新可见性失败：${err instanceof Error ? err.message : String(err)}`);
     }

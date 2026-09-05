@@ -72,3 +72,33 @@ export interface SceneLayout {
   collectionId: number;
   visible: boolean;
 }
+
+// --- Focus (M5) -----------------------------------------------------------
+
+/// One focus block (mirrors storage::focus_repo::FocusSession). The started
+/// timestamp is the clock: elapsed time is derived from it at read time, so
+/// a restart or webview reload cannot lose a running session.
+export type FocusKind = "pomodoro" | "custom" | "count_up";
+export type FocusStatus = "running" | "completed" | "interrupted" | "abandoned";
+
+export interface FocusSession {
+  id: number;
+  taskId: number | null;
+  sceneId: number | null;
+  kind: FocusKind;
+  plannedDurationS: number;
+  actualDurationS: number;
+  status: FocusStatus;
+  startedAt: number;
+  endedAt: number | null;
+  interruptions: number;
+  note: string | null;
+}
+
+/// Aggregated focus time for one local calendar day (YYYY-MM-DD).
+export interface FocusDay {
+  day: string;
+  totalS: number;
+  sessions: number;
+  interruptions: number;
+}

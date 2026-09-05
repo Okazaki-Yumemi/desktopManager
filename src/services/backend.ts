@@ -3,6 +3,9 @@ import type {
   AppInfo,
   Collection,
   DesktopItem,
+  FocusDay,
+  FocusKind,
+  FocusSession,
   LayoutApplyReport,
   LayoutSummary,
   Scene,
@@ -142,4 +145,49 @@ export async function setSceneVisibility(
 /** Visibility rows of a scene; collections without a row are visible. */
 export async function getSceneVisibility(id: number): Promise<SceneLayout[]> {
   return invoke<SceneLayout[]>("scene_visibility", { id });
+}
+
+// --- Focus (M5) -----------------------------------------------------------
+
+/** Start a focus session; refused while another one is still running. */
+export async function startFocus(
+  kind: FocusKind,
+  plannedSeconds: number,
+  taskId?: number | null,
+  sceneId?: number | null,
+): Promise<FocusSession> {
+  return invoke<FocusSession>("focus_start", { kind, plannedSeconds, taskId, sceneId });
+}
+
+/** The running session, if any — the recovery path after a restart. */
+export async function getRunningFocus(): Promise<FocusSession | null> {
+  return invoke<FocusSession | null>("focus_running");
+}
+
+/** End a session as completed or abandoned. */
+export async function finishFocus(
+  id: number,
+  status: "completed" | "abandoned",
+): Promise<FocusSession> {
+  return invoke<FocusSession>("focus_finish", { id, status });
+}
+
+/** Tally one mid-session interruption; the session keeps running. */
+export async function interruptFocus(id: number): Promise<FocusSession> {
+  return invoke<FocusSession>("focus_interrupt", { id });
+}
+
+/** Free-text note on a session (blank clears it). */
+export async function setFocusNote(id: number, note: string): Promise<void> {
+  await invoke("focus_note", { id, note });
+}
+
+/** Sessions that started on a local day (YYYY-MM-DD), running ones included. */
+export async function listFocusSessions(day: string): Promise<FocusSession[]> {
+  return invoke<FocusSession[]>("focus_sessions", { day });
+}
+
+/** Per-day focus totals over the last N local days. */
+export async function getFocusSummary(days: number): Promise<FocusDay[]> {
+  return invoke<FocusDay[]>("focus_summary", { days });
 }

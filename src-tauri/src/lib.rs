@@ -90,6 +90,13 @@ pub fn run() {
             commands::scene::scene_delete,
             commands::scene::scene_set_visibility,
             commands::scene::scene_visibility,
+            commands::focus::focus_start,
+            commands::focus::focus_running,
+            commands::focus::focus_finish,
+            commands::focus::focus_interrupt,
+            commands::focus::focus_note,
+            commands::focus::focus_sessions,
+            commands::focus::focus_summary,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

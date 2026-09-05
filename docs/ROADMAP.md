@@ -50,6 +50,8 @@ keyboard shortcuts, restore previous scene, focus-scene handoff state.
 
 ## M5 — Focus
 
+> **Status: core delivered 2026-09-05** — presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary (D17). Deferred: tray timer state, compact timer window, audio notification, task-binding UI (with M6).
+
 Pomodoro 25/5, 50/10, custom, count-up; task/scene binding; tray timer state;
 compact timer window; interruptions + notes; daily focus summary; scene
 integration (soft filtering only — no app blocking in V1).
