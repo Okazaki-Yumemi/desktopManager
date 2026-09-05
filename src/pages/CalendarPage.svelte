@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ChevronLeft, ChevronRight, X } from "@lucide/svelte";
-  import { createEvent, deleteEvent, listEventsRange, listTasks } from "../services/backend";
+  import { createEvent, deleteEvent, getSetting, listEventsRange, listTasks, setSetting } from "../services/backend";
   import type { CalendarEvent, Task } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
 
@@ -13,9 +13,11 @@
 
   let events = $state<CalendarEvent[]>([]);
   let tasks = $state<Task[]>([]);
-  // Anchor day inside the displayed week (any day works; Monday is derived).
+  // Anchor day inside the displayed week/month (any day works; the rest is
+  // derived). `view` is restored from settings in onMount.
   let anchor = $state(startOfDay(new Date()));
   let selectedDay = $state(startOfDay(new Date()));
+  let view = $state<"week" | "month">("week");
 
   // Inline creator, prefilled from the clicked grid slot.
   let creating = $state(false);
@@ -47,6 +49,17 @@
     return `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getMonth() + 1}月${b.getDate()}日`;
   });
 
+  // Month view: 42 cells starting from the Monday on/before the 1st.
+  const monthStart = $derived(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+  const monthCells = $derived.by(() => {
+    const first = weekStart(monthStart);
+    return Array.from({ length: 42 }, (_, i) => new Date(first.getTime() + i * DAY_MS));
+  });
+  const monthLabel = $derived(
+    `${monthStart.getFullYear()}年${monthStart.getMonth() + 1}月`,
+  );
+  const headLabel = $derived(view === "week" ? rangeLabel : monthLabel);
+
   function isToday(d: Date): boolean {
     return startOfDay(new Date()).getTime() === d.getTime();
   }
@@ -62,12 +75,21 @@
   }
 
   onMount(() => {
-    void reload();
+    void restoreView().then(() => reload());
   });
+
+  async function restoreView() {
+    try {
+      const saved = await getSetting<string>("ui.calendarView");
+      if (saved === "week" || saved === "month") view = saved;
+    } catch {
+      // Backend unavailable: keep the default week view.
+    }
+  }
 
   async function reload() {
     try {
-      const [evts, tsks] = await Promise.all([listEventsRange(weekStartsAt.getTime(), weekEnd), listTasks()]);
+      const [evts, tsks] = await Promise.all([listEventsRange(visibleFrom(), visibleTo()), listTasks()]);
       events = evts;
       tasks = tsks;
     } catch (err) {
@@ -75,8 +97,42 @@
     }
   }
 
-  function shiftWeek(delta: number) {
-    anchor = new Date(anchor.getTime() + delta * 7 * DAY_MS);
+  /** Event-fetch range covering whatever the current view shows. */
+  function visibleFrom(): number {
+    return view === "month" ? monthCells[0]!.getTime() : weekStartsAt.getTime();
+  }
+
+  function visibleTo(): number {
+    return view === "month" ? monthCells[41]!.getTime() + DAY_MS : weekEnd;
+  }
+
+  async function setView(v: "week" | "month") {
+    if (view === v) return;
+    view = v;
+    await reload();
+    // Persistence is best-effort: the in-session view already switched.
+    try {
+      await setSetting("ui.calendarView", v);
+    } catch {
+      /* degraded mode / storage failure */
+    }
+  }
+
+  function shiftBack() {
+    if (view === "week") {
+      anchor = new Date(anchor.getTime() - 7 * DAY_MS);
+    } else {
+      anchor = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1);
+    }
+    void reload();
+  }
+
+  function shiftForward() {
+    if (view === "week") {
+      anchor = new Date(anchor.getTime() + 7 * DAY_MS);
+    } else {
+      anchor = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
+    }
     void reload();
   }
 
@@ -155,14 +211,34 @@
   <header class="head">
     <div>
       <h1>日历</h1>
-      <p class="muted">{rangeLabel} · 本地数据，不上传</p>
+      <p class="muted">{headLabel} · 本地数据，不上传</p>
     </div>
     <div class="nav">
-      <button type="button" class="nav-btn" title="上一周" onclick={() => shiftWeek(-1)}>
+      <div class="view-toggle" role="radiogroup" aria-label="视图切换">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={view === "week"}
+          class:active={view === "week"}
+          onclick={() => void setView("week")}
+        >
+          周
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={view === "month"}
+          class:active={view === "month"}
+          onclick={() => void setView("month")}
+        >
+          月
+        </button>
+      </div>
+      <button type="button" class="nav-btn" title={view === "week" ? "上一周" : "上一月"} onclick={shiftBack}>
         <ChevronLeft size={15} />
       </button>
       <button type="button" class="nav-btn today" onclick={() => goToday()}>今天</button>
-      <button type="button" class="nav-btn" title="下一周" onclick={() => shiftWeek(1)}>
+      <button type="button" class="nav-btn" title={view === "week" ? "下一周" : "下一月"} onclick={shiftForward}>
         <ChevronRight size={15} />
       </button>
     </div>
@@ -268,6 +344,41 @@
       </div>
     {/each}
   </div>
+
+  {#if view === "month"}
+    <div class="month glass" role="grid" aria-label="月视图">
+      <div class="month-head">
+        {#each WEEKDAYS as w, i (i)}
+          <span class="dow">周{w}</span>
+        {/each}
+      </div>
+      <div class="month-body">
+        {#each monthCells as c (c.getTime())}
+          {@const evs = dayEvents(c)}
+          <button
+            type="button"
+            role="gridcell"
+            class="cell"
+            class:dim={c.getMonth() !== monthStart.getMonth()}
+            class:today={isToday(c)}
+            class:selected={selectedDay.getTime() === c.getTime()}
+            onclick={() => (selectedDay = c)}
+            ondblclick={() => openCreator(c, null)}
+          >
+            <span class="num">{c.getDate()}</span>
+            <span class="dots">
+              {#each evs.slice(0, 3) as e (e.id)}
+                <span class="dot" class:linked={e.taskId !== null} title={e.title}></span>
+              {/each}
+              {#if evs.length > 3}
+                <span class="more">+{evs.length - 3}</span>
+              {/if}
+            </span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <section class="agenda glass" aria-label="当日日程">
     <h2>
@@ -594,5 +705,122 @@
   .del:hover {
     color: var(--error);
     background: var(--surface-hover);
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+  }
+
+  .view-toggle button {
+    padding: 5px 12px;
+    border: none;
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .view-toggle button.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .month {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
+  }
+
+  .month-head {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .month-head .dow {
+    padding: var(--space-2) 0;
+    text-align: center;
+    font-size: var(--font-size-s);
+    color: var(--text-tertiary);
+  }
+
+  .month-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: minmax(84px, auto);
+  }
+
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 4px 6px;
+    border: none;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .cell:nth-child(7n) {
+    border-right: none;
+  }
+
+  .cell:nth-last-child(-n + 7) {
+    border-bottom: none;
+  }
+
+  .cell:hover {
+    background: var(--surface-hover);
+  }
+
+  .cell.selected {
+    background: var(--accent-soft);
+  }
+
+  .cell.dim .num {
+    color: var(--text-tertiary);
+    opacity: 0.55;
+  }
+
+  .cell .num {
+    font-size: var(--font-size-s);
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .cell.today .num {
+    color: var(--accent);
+  }
+
+  .dots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+
+  .dot.linked {
+    background: var(--ok);
+  }
+
+  .more {
+    font-size: 11px;
+    color: var(--text-tertiary);
   }
 </style>
