@@ -52,7 +52,7 @@ keyboard shortcuts, restore previous scene, focus-scene handoff state.
 
 ## M5 — Focus
 
-> **Status: core delivered 2026-09-05** — presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary (D17). Deferred: tray timer state, compact timer window, audio notification, task-binding UI (with M6).
+> **Status: core delivered 2026-09-05** — presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary (D17). Deferred: tray timer state, compact timer window. (Audio notification and task-binding UI landed 2026-09-05/06.)
 
 Pomodoro 25/5, 50/10, custom, count-up; task/scene binding; tray timer state;
 compact timer window; interruptions + notes; daily focus summary; scene
@@ -68,7 +68,7 @@ local persistence; ICS import/export after stabilization.
 
 ## M7 — Customization
 
-> **Status: core delivered 2026-09-05** — surface presets (standard/soft/sharp/OLED-dark), comfortable/compact density, glass strength (off/soft/normal/strong), motion levels (standard/reduced/off), all live-applied via tokens and persisted in settings (D20). Deferred: icon sizes, performance mode, layout presets, custom accent color picker.
+> **Status: core delivered 2026-09-05** — surface presets (standard/soft/sharp/OLED-dark), comfortable/compact density, glass strength (off/soft/normal/strong), motion levels (standard/reduced/off), all live-applied via tokens and persisted in settings (D20). Deferred: icon sizes, performance mode, layout presets. (Custom accent color picker landed 2026-09-06.)
 
 Theme presets (Minimal/Windows/Soft/OLED), accent colors, opacity, density,
 icon sizes, animation level, performance mode, layout presets. Focus on

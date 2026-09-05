@@ -8,10 +8,12 @@
     SURFACE_PRESETS,
     densityPref,
     getAccentPreference,
+    getCustomAccent,
     getThemePreference,
     glassPref,
     motionPref,
     setAccentPreference,
+    setCustomAccent,
     setThemePreference,
     surfacePref,
     type AccentPreference,
@@ -21,6 +23,7 @@
     type SurfacePreference,
     type ThemePreference,
   } from "../stores/theme.svelte";
+  import { isSoundEnabled, setSoundEnabled } from "../lib/chime.svelte";
   import {
     applyLayout,
     captureLayout,
@@ -105,6 +108,8 @@
   const currentDensity = $derived(densityPref.get());
   const currentGlass = $derived(glassPref.get());
   const currentMotion = $derived(motionPref.get());
+  const customAccent = $derived(getCustomAccent());
+  const soundOn = $derived(isSoundEnabled());
 
   async function chooseSurface(value: SurfacePreference) {
     try {
@@ -135,6 +140,22 @@
       await motionPref.set(value);
     } catch (err) {
       pushToast("error", `无法保存动效偏好：${String(err)}`);
+    }
+  }
+
+  async function chooseCustomAccent(hex: string) {
+    try {
+      await setCustomAccent(hex);
+    } catch (err) {
+      pushToast("error", `无法保存自定义颜色：${String(err)}`);
+    }
+  }
+
+  async function chooseSound(value: boolean) {
+    try {
+      await setSoundEnabled(value);
+    } catch (err) {
+      pushToast("error", `无法保存提示音偏好：${String(err)}`);
     }
   }
 
@@ -305,15 +326,27 @@
           <button
             type="button"
             role="radio"
-            aria-checked={currentAccent === a.value}
+            aria-checked={currentAccent === a.value && customAccent === null}
             aria-label={a.label}
             title={a.label}
             class="swatch"
-            class:selected={currentAccent === a.value}
+            class:selected={currentAccent === a.value && customAccent === null}
             style={`--swatch: ${SWATCH[a.value]}`}
             onclick={() => chooseAccent(a.value)}
           ></button>
         {/each}
+        <label
+          class="swatch swatch-custom"
+          class:selected={customAccent !== null}
+          title={customAccent ?? "自定义颜色"}
+        >
+          <input
+            type="color"
+            value={customAccent ?? "#2f6fd0"}
+            oninput={(e) => void chooseCustomAccent((e.currentTarget as HTMLInputElement).value)}
+            aria-label="自定义强调色"
+          />
+        </label>
       </div>
     </div>
     <div class="row row-gap">
@@ -390,6 +423,36 @@
             {m.label}
           </button>
         {/each}
+      </div>
+    </div>
+  </section>
+
+  <section class="group" aria-label="通知">
+    <h2>通知</h2>
+    <div class="row">
+      <div class="row-text">
+        <span class="row-title">完成提示音</span>
+        <span class="row-desc">专注倒计时自然结束时播放一声短提示；手动结束不响。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="完成提示音">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={soundOn}
+          class:active={soundOn}
+          onclick={() => void chooseSound(true)}
+        >
+          开
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!soundOn}
+          class:active={!soundOn}
+          onclick={() => void chooseSound(false)}
+        >
+          关
+        </button>
       </div>
     </div>
   </section>
@@ -720,6 +783,32 @@
   .swatches {
     display: inline-flex;
     gap: var(--space-2);
+    align-items: center;
+  }
+
+  .swatch-custom {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: conic-gradient(#e5484d, #e8b45a, #46a758, #0090ff, #7c5cd6, #e5484d);
+  }
+
+  .swatch-custom input {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    /* Strip the native color-input chrome; the picker opens on click. */
+    &::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    &::-webkit-color-swatch {
+      border: none;
+      border-radius: 50%;
+    }
   }
 
   .swatch {

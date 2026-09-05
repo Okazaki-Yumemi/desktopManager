@@ -98,8 +98,62 @@ export async function loadAccentPreference(): Promise<void> {
 
 export async function setAccentPreference(a: AccentPreference): Promise<void> {
   accent = a;
+  // A preset choice supersedes any custom color; the inline overrides must go
+  // or they would keep winning the cascade over the preset blocks.
+  customAccent = null;
+  clearCustomAccent();
   applyAccent(a);
   await setSetting(ACCENT_SETTING_KEY, a);
+}
+
+// ---------------------------------------------------------------------------
+// Custom accent color (M7 leftover): a hex the user picks, stored verbatim
+// and applied as inline CSS custom properties so it wins the cascade over
+// every [data-accent] preset block in tokens.css.
+// ---------------------------------------------------------------------------
+
+export const ACCENT_CUSTOM_SETTING_KEY = "ui.accentCustom";
+
+export const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+let customAccent = $state<string | null>(null);
+
+export function getCustomAccent(): string | null {
+  return customAccent;
+}
+
+function applyCustomAccent(hex: string): void {
+  document.documentElement.dataset.accent = "custom";
+  document.documentElement.style.setProperty("--accent", hex);
+  document.documentElement.style.setProperty(
+    "--accent-soft",
+    `color-mix(in srgb, ${hex} 13%, transparent)`,
+  );
+}
+
+function clearCustomAccent(): void {
+  document.documentElement.style.removeProperty("--accent");
+  document.documentElement.style.removeProperty("--accent-soft");
+}
+
+export async function loadCustomAccent(): Promise<void> {
+  try {
+    const saved = await getSetting<string>(ACCENT_CUSTOM_SETTING_KEY);
+    if (typeof saved === "string" && HEX_COLOR_RE.test(saved)) {
+      customAccent = saved.toLowerCase();
+      applyCustomAccent(customAccent);
+    }
+  } catch {
+    // Backend unavailable: presets remain in charge.
+  }
+}
+
+export async function setCustomAccent(hex: string): Promise<void> {
+  const norm = hex.toLowerCase();
+  if (!HEX_COLOR_RE.test(norm)) throw new Error("无效的颜色值");
+  customAccent = norm;
+  applyCustomAccent(norm);
+  await setSetting(ACCENT_CUSTOM_SETTING_KEY, norm);
 }
 
 /// Re-resolve when the OS theme flips while following "system".

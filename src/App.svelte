@@ -13,11 +13,13 @@
     densityPref,
     glassPref,
     loadAccentPreference,
+    loadCustomAccent,
     loadThemePreference,
     motionPref,
     surfacePref,
     watchSystemTheme,
   } from "./stores/theme.svelte";
+  import { loadSoundPreference } from "./lib/chime.svelte";
   import { initWallpaper, wallpaper } from "./stores/wallpaper.svelte";
 
   const page = $derived(currentPage());
@@ -29,6 +31,8 @@
     void densityPref.load();
     void glassPref.load();
     void motionPref.load();
+    void loadSoundPreference();
+    void loadCustomAccent();
     void initWallpaper();
     return watchSystemTheme();
   });

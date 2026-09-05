@@ -14,6 +14,7 @@
     setSetting,
     startFocus,
   } from "../services/backend";
+  import { playChime } from "../lib/chime.svelte";
   import type { FocusDay, FocusKind, FocusSession, Scene, Task } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
 
@@ -137,11 +138,13 @@
     if (phase === "focus" && session && session.plannedDurationS > 0 && !autoFinishing) {
       if (elapsedS >= session.plannedDurationS) {
         autoFinishing = true;
+        playChime("focus");
         void endFocus("completed", true);
       }
     } else if (phase === "break" && breakEndsAt > 0 && now >= breakEndsAt) {
       phase = "idle";
       breakEndsAt = 0;
+      playChime("break");
       pushToast("info", "休息结束，随时可以开始下一段专注");
     }
   }
