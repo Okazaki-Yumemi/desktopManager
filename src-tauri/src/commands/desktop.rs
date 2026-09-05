@@ -1,9 +1,11 @@
-//! Desktop index commands: list, search, refresh, open.
+//! Desktop index commands: list, search, refresh, open, icons.
 
+use serde::Serialize;
 use tauri::{AppHandle, State};
 
 use crate::app::error::{AppError, AppResult};
 use crate::app::state::{lock_db, AppState};
+use crate::desktop::icons::{extract_cached, IconPayload};
 use crate::desktop::open::open_with_shell;
 use crate::desktop::service;
 use crate::storage::desktop_repo::{DesktopItem, DesktopRepo, SyncOutcome};
@@ -49,4 +51,31 @@ pub fn desktop_open(state: State<'_, AppState>, path: String) -> AppResult<()> {
         "opening desktop item"
     );
     open_with_shell(&path)
+}
+
+/// Shell icon for an indexed item as base64 RGBA (`None` → UI shows a glyph).
+/// Restricted to indexed paths, like `desktop_open`.
+#[tauri::command]
+pub fn desktop_icon(state: State<'_, AppState>, path: String) -> AppResult<Option<IconPayloadDto>> {
+    let indexed = {
+        let mut db = lock_db(&state)?;
+        DesktopRepo::new(db.conn()).find_visible(&path)?
+    };
+    if indexed.is_none() {
+        return Ok(None);
+    }
+    Ok(extract_cached(&path)?.map(|p: IconPayload| IconPayloadDto {
+        width: p.width,
+        height: p.height,
+        rgba: p.rgba,
+    }))
+}
+
+/// Serde-facing mirror of `IconPayload` (camelCase).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IconPayloadDto {
+    pub width: i32,
+    pub height: i32,
+    pub rgba: String,
 }

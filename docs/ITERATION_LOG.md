@@ -106,3 +106,43 @@ eslint 0, vite build ok.
 **Next:** M2 — Desktop Index (user+public desktop discovery with redirect
 awareness, debounced watcher, `desktop_items` indexing, open via shell,
 search).
+
+## 2026-09-05 — Round 4: M2 icon cache (lazy, bounded)
+
+**Shipped:**
+
+- `desktop/icons.rs`: on-demand shell icon extraction — SHGetFileInfoW
+  (SHGFI_ICON|SHGFI_LARGEICON) → GetIconInfo → GetDIBits 32bpp top-down
+  (negative biHeight), BGRA→RGBA swap, AND-mask alpha fixup for legacy
+  icons; backend LRU cache (256 entries, FIFO-evicting with recency
+  refresh); payload = dimensions + base64 RGBA over IPC. `desktop_icon`
+  command, allow-listed to indexed paths like `desktop_open`.
+- Frontend: `iconCache.ts` (bounded Map 512, recency-refreshing,
+  canvas→PNG data-URL encoding — no image crate in the backend) and
+  `DesktopIcon.svelte` (snippet-based generic-glyph fallback).
+- deps: base64 0.22, windows feature Win32_Graphics_Gdi.
+
+**Verified live (WINDOWS_TESTED):** real desktop grid shows authentic
+shell icons — red PDF badges, Word/PPT icons, yellow folders, Zotero /
+ZCode / Battlestate / 此电脑 shortcut icons resolved to their targets.
+cargo test 17/17 (new: LRU eviction, real notepad.exe extraction,
+missing-path→None), clippy 0, fmt clean; svelte-check 0, eslint 0,
+vite build ok, vitest 3/3.
+
+**Learned:**
+
+- HICON pixel reading needs a masked DC dance: GetIconInfo gives
+  hbmColor+hbmMask; read the color bitmap with a negative-height
+  BITMAPINFOHEADER (top-down); legacy icons carry alpha=0 everywhere and
+  rely on the 1bpp AND mask (bit 0 = opaque) — fix up per pixel.
+- windows 0.61: DeleteObject/GetObjectW take HGDIOBJ — wrap HBITMAP as
+  HGDIOBJ(h.0); SHGetFileInfoW returns BOOL-as-usize (0 = fail);
+  BITMAPINFOHEADER.biBitCount is u16.
+- base64 string length ≠ byte length (the first test assertion compared
+  5464 chars against 4096 bytes — caught immediately by the test).
+- Dev loop note: tauri dev auto-rebuilds + restarts the app on Rust
+  changes and Vite HMRs the webview; the ZCode crash killed the whole
+  dev process tree (job objects), a plain relaunch is enough.
+
+**Next:** M2 remainder — virtual collections + drag/drop assignment —
+then M3 shell integration on the LVM route.

@@ -33,8 +33,8 @@
 
 M0, M1 complete. **M2 — Desktop Index: core landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, Chinese UI).
-Still open inside M2: lazy bounded icon cache, virtual collections +
-drag/drop assignment. Next after that: **M3 — Shell Integration** on the
+Still open inside M2: virtual collections + drag/drop assignment
+(icons are done, see below). Next after that: **M3 — Shell Integration** on the
 verified LVM route.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
@@ -67,7 +67,12 @@ verified LVM route.
     by the user double-clicking in the UI).
   - Search: UI search box "pdf" → backend `desktop_search` → filtered to
     8 PDFs, count line updates ("共 8 项"). LIKE wildcards escaped.
-  - Frontend 桌面 page: grid with kind icons, size/date sublines, 公用
+  - Icons (WINDOWS_TESTED): shell icons extracted on demand
+    (SHGetFileInfoW → GetDIBits 32bpp top-down, AND-mask alpha fixup for
+    legacy icons), backend LRU (256) + frontend canvas→PNG data-URL cache
+    (512 per session); verified visually — PDF/Word/PPT/folder/shortcut
+    target icons all render.
+  - Frontend 桌面 page: grid with real shell icons, size/date sublines, 公用
     badges, debounced search, refresh button, `desktop:changed` listener.
 - Release build ~5.1 MB runs; MSI built. NSIS bundle failed once (network
   timeout downloading NSIS) — retry later.
@@ -77,8 +82,8 @@ verified LVM route.
 
 ## What is broken / unfinished
 
-- M2 remainder: lazy bounded icon cache; virtual collections + drag/drop
-  assignment UI (schema `collections`/`collection_items` already exists).
+- M2 remainder: virtual collections + drag/drop assignment UI (schema
+  `collections`/`collection_items` already exists).
 - NSIS installer bundle (network timeout — retry `corepack pnpm tauri build`).
 - Explorer-restart persistence test — deferred to a dedicated session
   (snapshot before killing explorer).
@@ -90,7 +95,7 @@ verified LVM route.
 
 ## Next actions
 
-1. M2 remainder: icon cache (lazy, bounded) → then collections + drag/drop.
+1. M2 remainder: virtual collections + drag/drop assignment.
 2. M3: shell integration on the verified LVM route (see
    docs/WINDOWS_SHELL_PROBE.md + DECISIONS D8), incl. canary auto-arrange
    detection.
@@ -108,7 +113,7 @@ verified LVM route.
   `added=1` in <2 s; delete → `removed=1`, history row `missing=1`. Open via
   shell verified (folder `兴趣工作` opened; allow-list rejects non-indexed
   paths by construction). UI search "pdf" → 8 hits live. Chinese UI verified
-  across pages incl. tray menu and date formats. cargo test 14/14, clippy 0
+  across pages incl. tray menu and date formats. cargo test 17/17, clippy 0
   warn, fmt clean; vitest 3/3, svelte-check 0, eslint 0, vite build ok.
 - 2026-09-05 (M1, WINDOWS_TESTED): tray icon + menu live-verified (left-click
   toggle via Win+B → tray → Enter; close button hides to tray, process

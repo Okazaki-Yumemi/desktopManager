@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { FileSymlink, FileText, Folder, RotateCw, Search } from "@lucide/svelte";
+  import DesktopIcon from "../components/DesktopIcon.svelte";
   import {
     getDesktopItems,
     openDesktopItem,
@@ -151,13 +152,17 @@
             }}
           >
             <span class="icon kind-{item.kind}" aria-hidden="true">
-              {#if item.kind === "folder"}
-                <Folder size={22} />
-              {:else if item.kind === "shortcut"}
-                <FileSymlink size={22} />
-              {:else}
-                <FileText size={22} />
-              {/if}
+              <DesktopIcon path={item.path} size={22}>
+                {#snippet fallback()}
+                  {#if item.kind === "folder"}
+                    <Folder size={22} />
+                  {:else if item.kind === "shortcut"}
+                    <FileSymlink size={22} />
+                  {:else}
+                    <FileText size={22} />
+                  {/if}
+                {/snippet}
+              </DesktopIcon>
             </span>
             <span class="meta">
               <span class="name">{item.displayName}</span>

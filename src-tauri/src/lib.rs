@@ -47,6 +47,7 @@ pub fn run() {
             commands::desktop::desktop_search,
             commands::desktop::desktop_rescan,
             commands::desktop::desktop_open,
+            commands::desktop::desktop_icon,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

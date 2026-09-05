@@ -3,6 +3,7 @@
 //! this module never moves, renames or deletes a user file.
 
 pub mod discovery;
+pub mod icons;
 pub mod open;
 pub mod scanner;
 pub mod service;
