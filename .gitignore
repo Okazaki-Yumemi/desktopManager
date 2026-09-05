@@ -9,3 +9,4 @@ Thumbs.db
 probe/shell_probe/target/
 probe/shell_probe/*.json
 ${APPDATA}/
+tsconfig.tsbuildinfo
