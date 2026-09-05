@@ -307,6 +307,17 @@ export async function updateEvent(
   });
 }
 
+/** Exported ICS file: absolute path plus how many events were written. */
+export interface ExportedIcs {
+  path: string;
+  count: number;
+}
+
+/** Export every calendar event to an RFC 5545 .ics file in the app data exports folder. */
+export async function exportCalendarIcs(): Promise<ExportedIcs> {
+  return invoke<ExportedIcs>("event_export_ics");
+}
+
 /** Move an event's window (drag a time block). */
 export async function rescheduleEvent(
   id: number,

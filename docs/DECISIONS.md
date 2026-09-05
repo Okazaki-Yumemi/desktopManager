@@ -257,3 +257,19 @@ same way so external items render real shell icons.
 - quick_check runs at every startup. On this app's DB size class the cost is
   negligible (the M8 scale test syncs 520 items in 5 ms debug; quick_check
   is the same order); M9 re-measures startup with it in the path.
+
+## D23 — ICS export: floating local times, exclusive all-day DTEND (2026-09-06, R18)
+
+- The calendar stores epoch millis and shows wall-clock times with no
+  timezone model, so the honest iCalendar representation is a *floating*
+  local time (`DTSTART:20260906T090000`, no TZID, no Z). Emitting UTC or
+  inventing a TZID would claim knowledge the app does not have and would
+  shift events when the file crosses timezones. Consequence: files exported
+  and re-imported by the same machine round-trip exactly; other machines
+  interpret them as their local wall time.
+- All-day events use `DTSTART;VALUE=DATE` with an exclusive `DTEND` (start +
+  1 day) as RFC 5545 requires; the app stores all-day end as the same
+  midnight the UI means, so the exporter adds the day.
+- TEXT values are escaped per RFC §3.3.11 and every content line is folded
+  at the 75-octet limit on char boundaries (CJK-safe, round-trip tested).
+  Import (parsing other producers' quirks) is deliberately deferred.

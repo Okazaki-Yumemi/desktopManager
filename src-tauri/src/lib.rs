@@ -7,6 +7,7 @@
 //! - [`commands`]: Tauri command handlers exposed to the frontend
 
 mod app;
+mod calendar_ics;
 mod commands;
 mod desktop;
 mod storage;
@@ -110,6 +111,7 @@ pub fn run() {
             commands::calendar::event_update,
             commands::calendar::event_reschedule,
             commands::calendar::event_delete,
+            commands::calendar::event_export_ics,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

@@ -69,6 +69,16 @@ impl<'a> CalendarRepo<'a> {
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
     }
 
+    /// Every event, soonest first (used by ICS export — no time window).
+    pub fn list_all(&self) -> AppResult<Vec<CalendarEvent>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {} FROM calendar_events ORDER BY starts_at",
+            Self::COLS
+        ))?;
+        let rows = stmt.query_map([], Self::map)?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
     fn validate(&self, title: &str, starts_at: i64, ends_at: i64) -> AppResult<String> {
         let title = title.trim();
         if title.is_empty() {

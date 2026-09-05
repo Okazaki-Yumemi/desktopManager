@@ -1,3 +1,18 @@
+## 2026-09-06 — Round 18: 日程 ICS 导出（M6 遗留）
+
+- 新增 `calendar_ics.rs`（纯序列化 + 6 个单测）：RFC 5545 转义（; , \n \）、
+  75 字节折行（按字符边界，中文安全，展开可还原）、CRLF 行尾；时间采用
+  浮动本地时间（应用无时区模型，不谎称 UTC/TZID，D23）；全天事件用
+  VALUE=DATE + 排他 DTEND（+1 天）。
+- `CalendarRepo::list_all()` + `event_export_ics` 命令：导出全部日程到
+  应用数据目录 exports/calendar-<时间戳>.ics，返回 {path, count}；
+  日历页新增「导出 ICS」按钮，成功提示路径，降级模式失败提示优雅。
+- 测试：cargo test 54/54、clippy 0、svelte-check 0、eslint 0；降级浏览器
+  冒烟验证按钮渲染与失败路径。真实应用内导出 + 第三方日历互导留给用户
+  会话（TESTED，未标 WINDOWS_TESTED/USER_VERIFIED）。
+- **下一步：** M11 release 构建冒烟（pnpm tauri build + 安装包产物）；
+  汇总晨间验收清单。
+
 ## 2026-09-06 — Round 17: M9 性能测量切片（0/50/200/500 项）
 
 - 新增 `src-tauri/src/perf_measure.rs` 测量基建（非 CI：

@@ -1,7 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ChevronLeft, ChevronRight, X } from "@lucide/svelte";
-  import { createEvent, deleteEvent, getSetting, listEventsRange, listTasks, setSetting } from "../services/backend";
+  import {
+  createEvent,
+  deleteEvent,
+  exportCalendarIcs,
+  getSetting,
+  listEventsRange,
+  listTasks,
+  setSetting,
+} from "../services/backend";
   import type { CalendarEvent, Task } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
 
@@ -84,6 +92,15 @@
       if (saved === "week" || saved === "month") view = saved;
     } catch {
       // Backend unavailable: keep the default week view.
+    }
+  }
+
+  async function onExportIcs() {
+    try {
+      const r = await exportCalendarIcs();
+      pushToast("ok", `已导出 ${r.count} 条日程到 ${r.path}`);
+    } catch (err) {
+      pushToast("error", `导出失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -287,9 +304,12 @@
       <button type="button" class="btn" onclick={() => (creating = false)}>取消</button>
     </div>
   {:else}
-    <button type="button" class="btn new-event" onclick={() => openCreator(selectedDay, 9)}>
-      ＋ 新建日程
-    </button>
+    <div class="page-actions">
+      <button type="button" class="btn new-event" onclick={() => openCreator(selectedDay, 9)}>
+        ＋ 新建日程
+      </button>
+      <button type="button" class="btn" onclick={() => void onExportIcs()}>导出 ICS</button>
+    </div>
   {/if}
 
   <div class="week glass" role="grid" aria-label="周视图">
@@ -472,8 +492,13 @@
     font-weight: 600;
   }
 
-  .new-event {
+  .page-actions {
+    display: flex;
+    gap: var(--space-2);
     margin-bottom: var(--space-3);
+  }
+
+  .new-event {
     background: var(--glass);
     backdrop-filter: var(--glass-filter);
   }

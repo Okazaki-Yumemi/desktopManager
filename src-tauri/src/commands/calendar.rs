@@ -85,3 +85,29 @@ pub fn event_delete(state: State<'_, AppState>, id: i64) -> AppResult<bool> {
     let mut db = lock_db(&state)?;
     CalendarRepo::new(db.conn()).delete(id)
 }
+
+/// Outcome of an ICS export: absolute file path and event count.
+#[derive(serde::Serialize)]
+pub struct ExportedIcs {
+    pub path: String,
+    pub count: usize,
+}
+
+#[tauri::command]
+pub fn event_export_ics(state: State<'_, AppState>) -> AppResult<ExportedIcs> {
+    let (ics, count) = {
+        let mut db = lock_db(&state)?;
+        let events = CalendarRepo::new(db.conn()).list_all()?;
+        (crate::calendar_ics::events_to_ics(&events), events.len())
+    };
+
+    let dir = state.data_dir.join("exports");
+    std::fs::create_dir_all(&dir)?;
+    let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    let path = dir.join(format!("calendar-{stamp}.ics"));
+    std::fs::write(&path, ics)?;
+    Ok(ExportedIcs {
+        path: path.to_string_lossy().into_owned(),
+        count,
+    })
+}

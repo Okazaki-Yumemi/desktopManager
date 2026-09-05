@@ -60,11 +60,11 @@ integration (soft filtering only — no app blocking in V1).
 
 ## M6 — Tasks + Calendar
 
-> **Status: core delivered 2026-09-05** — tasks (quick capture Ctrl+N, status cycling, priority/due/notes, status filters + search), week calendar (Monday-start grid, click-slot creation, all-day + timed events, task linking, day agenda; month view (2026-09-05 night round) with per-day dots, cross-month dimming, click-to-select + dblclick-create, and a persisted 周/月 toggle. Deferred: drag task → time block, ICS import/export (post-stabilization).
+> **Status: core delivered 2026-09-05** — tasks (quick capture Ctrl+N, status cycling, priority/due/notes, status filters + search), week calendar (Monday-start grid, click-slot creation, all-day + timed events, task linking, day agenda; month view (2026-09-05 night round) with per-day dots, cross-month dimming, click-to-select + dblclick-create, and a persisted 周/月 toggle. Deferred: drag task → time block, ICS import (export delivered 2026-09-06: RFC 5545 VCALENDAR with unit-tested escaping/folding, floating local times + exclusive all-day DTEND, D23).
 
 Tasks (todo/doing/done, priority, due, estimate, tags, fast capture Ctrl+N),
 Agenda + Week views, then Month; drag task → calendar to create a time block;
-local persistence; ICS import/export after stabilization.
+local persistence; ICS import after stabilization (export done 2026-09-06).
 
 ## M7 — Customization
 
