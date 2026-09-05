@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { currentToasts, dismissToast, type Toast } from "../stores/toast.svelte";
+  import { currentToasts, dismissToast } from "../stores/toast.svelte";
 
   const toasts = $derived(currentToasts());
 </script>

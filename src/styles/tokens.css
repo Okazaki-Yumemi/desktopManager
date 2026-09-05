@@ -65,3 +65,44 @@
   --warn: #d29a22;
   --error: #e06c5b;
 }
+
+/*
+ * Accent presets — must come after the theme blocks so they win the cascade
+ * (equal specificity, later wins). "ocean" is the default and needs no
+ * override block.
+ */
+:root[data-theme="light"][data-accent="violet"] {
+  --accent: #7c5cd6;
+  --accent-soft: rgb(124 92 214 / 0.1);
+}
+:root[data-theme="dark"][data-accent="violet"] {
+  --accent: #b39df0;
+  --accent-soft: rgb(179 157 240 / 0.14);
+}
+
+:root[data-theme="light"][data-accent="grass"] {
+  --accent: #2f8f4e;
+  --accent-soft: rgb(47 143 78 / 0.1);
+}
+:root[data-theme="dark"][data-accent="grass"] {
+  --accent: #7cc98f;
+  --accent-soft: rgb(124 201 143 / 0.14);
+}
+
+:root[data-theme="light"][data-accent="amber"] {
+  --accent: #a86807;
+  --accent-soft: rgb(168 104 7 / 0.1);
+}
+:root[data-theme="dark"][data-accent="amber"] {
+  --accent: #e8b45a;
+  --accent-soft: rgb(232 180 90 / 0.14);
+}
+
+:root[data-theme="light"][data-accent="rose"] {
+  --accent: #c2455f;
+  --accent-soft: rgb(194 69 95 / 0.1);
+}
+:root[data-theme="dark"][data-accent="rose"] {
+  --accent: #ef8fa3;
+  --accent-soft: rgb(239 143 163 / 0.14);
+}

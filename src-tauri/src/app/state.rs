@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 use super::error::{AppError, AppResult};
+use super::shortcuts::ShortcutStatus;
 use crate::storage::Database;
 
 /// Central application state managed by Tauri.
@@ -11,6 +12,8 @@ pub struct AppState {
     pub db: Mutex<Database>,
     pub data_dir: PathBuf,
     pub log_dir: PathBuf,
+    /// Outcome of global-shortcut registration at startup (conflict-safe).
+    pub shortcut_status: Mutex<ShortcutStatus>,
 }
 
 impl AppState {
@@ -26,11 +29,24 @@ impl AppState {
         let db = Database::open(&db_path)?;
         tracing::info!(db = %db_path.display(), "database opened");
 
+        let shortcut_status = Mutex::new(ShortcutStatus {
+            binding: super::shortcuts::COMMAND_PALETTE_SHORTCUT.to_string(),
+            registered: false,
+            error: None,
+        });
+
         Ok(Self {
             db: Mutex::new(db),
             data_dir,
             log_dir,
+            shortcut_status,
         })
+    }
+
+    pub fn set_shortcut_status(&self, status: ShortcutStatus) {
+        if let Ok(mut guard) = self.shortcut_status.lock() {
+            *guard = status;
+        }
     }
 }
 

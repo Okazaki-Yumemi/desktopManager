@@ -4,7 +4,7 @@ export interface Toast {
   message: string;
 }
 
-let items = $state<Toast[]>([]);
+const items = $state<Toast[]>([]);
 let nextId = 1;
 
 export function currentToasts(): Toast[] {

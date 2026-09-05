@@ -78,6 +78,18 @@
       <p class="muted">Contacting backend…</p>
     {/if}
   </section>
+
+  <section class="card" aria-label="Quick start">
+    <div class="card-title-row">
+      <h2>Quick start</h2>
+    </div>
+    <p class="hint">
+      Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> anywhere in Windows to
+      show or hide this window. Closing the window only hides it to the tray —
+      use the tray menu to really quit.
+    </p>
+    <p class="muted">Desktop organizing and the command palette arrive in upcoming milestones.</p>
+  </section>
 </div>
 
 <style>
@@ -164,6 +176,21 @@
 
   .muted {
     color: var(--text-tertiary);
+  }
+
+  .hint {
+    margin: 0 0 var(--space-2);
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 1px 7px;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-s);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-s);
   }
 
   .error-text {

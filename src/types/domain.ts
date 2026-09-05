@@ -8,3 +8,9 @@ export interface AppInfo {
   os: string;
   schemaVersion: number;
 }
+
+export interface ShortcutInfo {
+  binding: string;
+  registered: boolean;
+  error: string | null;
+}

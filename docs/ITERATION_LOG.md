@@ -67,3 +67,46 @@ virtual-screen origin (-2560,-559) must be stored alongside positions.
 
 **Next:** commit + push (first push to the remote), then M1 — tray, global
 shortcut, custom titlebar.
+
+## 2026-09-05 — Round 3: first push + M1 Application Shell
+
+**Shipped:**
+
+- First push to `github.com:Okazaki-Yumemi/desktopManager` (`7fa6135`, 86
+  files): full M0 foundation + verified probe + docs.
+- **M1 Application Shell** (WINDOWS_TESTED on the real desktop):
+  - Tray icon + menu (Show DesktopManager / Quit); left-click toggles the
+    window; the window close button hides to tray instead of quitting
+    (resident tool behavior, logged).
+  - Global shortcut `Alt+Shift+D` (command-palette binding, toggles the
+    window until the palette exists in M6). Registration is conflict-tolerant:
+    a taken binding logs a warning and shows in Settings; startup never fails.
+  - Theme system completion: 5 accent presets (ocean default) applied via
+    `data-accent` attribute + tokens.css cascade, persisted in settings.
+  - Settings: accent swatches, global-shortcut card with live registration
+    status (green "registered" badge verified live).
+  - Today: quick-start card (shortcut hint + close-to-tray explanation).
+  - New command `shortcuts_get`; `AppState.shortcut_status`.
+
+**Learned:**
+
+- tao's `Window::is_focused()` tracks internal focus state and missed the
+  focused case with WebView2's child-window focus — the toggle always took
+  the "show" branch. Fixed by comparing `GetForegroundWindow()` against the
+  window HWND (`windows` crate dep added for src-tauri, Windows-only).
+- tauri-plugin-global-shortcut 2.3: plugin is `Builder::new().build()`, the
+  manager extension trait is `GlobalShortcutExt`, per-shortcut registration
+  via `app.global_shortcut().on_shortcut(...)` in setup.
+- eslint flagged 2 latent issues in M0 toast code (`let`→`const` for runes
+  state, unused type import) — fixed; the rest of the suite stays green.
+
+**Test evidence:** log shows `global shortcut registered binding="alt+shift+d"`,
+toggle debug lines (`visible=true foreground=false` → show, then
+`foreground=true` → hide), `main window hidden to tray (close requested)`;
+settings table contains `ui.theme="system"`, `ui.accent="ocean"` after live
+switching. cargo test 6/6, clippy clean, fmt clean; vitest 3/3, svelte-check 0,
+eslint 0, vite build ok.
+
+**Next:** M2 — Desktop Index (user+public desktop discovery with redirect
+awareness, debounced watcher, `desktop_items` indexing, open via shell,
+search).

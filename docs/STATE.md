@@ -31,19 +31,25 @@
 
 ## Current milestone
 
-M0 — Foundation: **COMPLETE and verified** (code green, installers built,
-Windows shell probe executed with a verified read/write/restore round-trip).
-Next: **M1 — App Shell** (tray, global shortcut, custom titlebar).
+M0 — Foundation and **M1 — Application Shell: COMPLETE and verified**.
+Next: **M2 — Desktop Index** (known-folder discovery, debounced watcher,
+indexing, open via shell; fallback-first, never move files).
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
 - Tauri 2 project skeleton, plain Svelte 5 + Vite 7 + TS frontend (no SvelteKit).
-- Rust backend modules: `app/` (state, error, logging), `storage/` (SQLite,
-  migrations 1–5, settings repo), `commands/` (app_info, settings get/set).
-  cargo test 6/6, clippy clean, fmt clean.
-- Design tokens (light/dark), sidebar shell, Today page (backend status card),
-  Settings page (theme persistence round-trip through SQLite, verified in the
-  release build too — settings row inspected in the DB, log file complete).
+- Rust backend modules: `app/` (state, error, logging, shell/tray, shortcuts),
+  `storage/` (SQLite, migrations 1–5, settings repo), `commands/` (app_info,
+  settings get/set, shortcuts_get). cargo test 6/6, clippy clean, fmt clean.
+- Design tokens (light/dark + 5 accent presets), sidebar shell, Today page
+  (backend status card + quick-start card), Settings page (theme + accent
+  persistence round-trip through SQLite, verified via node:sqlite inspection).
+- **Tray (WINDOWS_TESTED)**: icon + menu (Show/Quit), left-click toggles the
+  window, close button hides to tray (process stays resident, log confirms).
+- **Global shortcut (WINDOWS_TESTED)**: Alt+Shift+D registered at startup
+  (conflict → warning + status in Settings, startup never fails); toggles
+  show/hide verified live in both directions. Toggle uses
+  GetForegroundWindow (tao's is_focused missed WebView2 focus).
 - Release build `src-tauri/target/release/desktop-manager.exe` (≈5.1 MB) runs;
   MSI installer built. NSIS bundle FAILED once (`timeout: global` while
   downloading NSIS from github — network flake, retry later; MSI is fine).
@@ -60,15 +66,18 @@ Next: **M1 — App Shell** (tray, global shortcut, custom titlebar).
   deferred to a dedicated session; snapshot before killing explorer.
 - Programmatic auto-arrange/grid detection (currently read from the context
   menu); needs a canary-move check before batch repositions (M3).
-- No CI yet. No tray, no global shortcut (M1 scope).
+- Command palette itself is M6; the global shortcut currently toggles the
+  window. Shortcut re-binding UI lands with the palette (M6/M7).
+- No CI yet.
 
 ## Next actions
 
-1. Commit + push everything (first push to the empty remote).
-2. M1: tray icon + menu (tauri tray), global shortcut (show/hide), custom
-   titlebar; keep idle CPU ≈0 (event-driven only).
-3. M2 (desktop index): FUSE-like metadata indexing of `D:\Desktop` via
-   `SHGetKnownFolderPath` + filesystem walking; never move files.
+1. Commit + push M1.
+2. M2: desktop index — enumerate `D:\Desktop` (user + public, redirect-aware)
+   via SHGetKnownFolderPath + walk; index into `desktop_items`; debounced
+   filesystem watcher; open item via shell; search. Fallback-first.
+3. M3: shell integration built on the verified LVM route (see
+   docs/WINDOWS_SHELL_PROBE.md + DECISIONS D8).
 
 ## Known blockers
 
@@ -77,6 +86,13 @@ Next: **M1 — App Shell** (tray, global shortcut, custom titlebar).
 
 ## Test results log (latest first)
 
+- 2026-09-05 (M1, WINDOWS_TESTED): tray icon + menu live-verified (left-click
+  toggle via Win+B → tray → Enter; close button hides to tray, process
+  resident). Global shortcut Alt+Shift+D registered + toggles both directions;
+  toggle root-caused to tao is_focused unreliability → GetForegroundWindow
+  compare. Accent switching (violet→ocean) verified live + persisted
+  (`ui.accent` in settings table). Settings shows "Alt + Shift + D" with
+  green "registered" badge. Frontend 3/3 tests, svelte-check/eslint clean.
 - 2026-09-05 (probe): full protocol green on real desktop — snapshot 27 →
   move (600,600)→landed (604,620, grid-snap) → verify 26+1 DIFF → restore →
   verify 27 match / 0 differ → cleanup removed both probe files.

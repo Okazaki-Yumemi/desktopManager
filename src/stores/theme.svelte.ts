@@ -55,6 +55,52 @@ export async function setThemePreference(p: ThemePreference): Promise<void> {
   await setSetting(THEME_SETTING_KEY, p);
 }
 
+// ---------------------------------------------------------------------------
+// Accent color (theme-independent; see tokens.css `[data-accent=…]` blocks)
+// ---------------------------------------------------------------------------
+
+export type AccentPreference = "ocean" | "violet" | "grass" | "amber" | "rose";
+
+export const ACCENT_SETTING_KEY = "ui.accent";
+
+export const ACCENT_PRESETS: ReadonlyArray<{ value: AccentPreference; label: string }> = [
+  { value: "ocean", label: "Ocean" },
+  { value: "violet", label: "Violet" },
+  { value: "grass", label: "Grass" },
+  { value: "amber", label: "Amber" },
+  { value: "rose", label: "Rose" },
+];
+
+function isAccent(v: unknown): v is AccentPreference {
+  return typeof v === "string" && ACCENT_PRESETS.some((p) => p.value === v);
+}
+
+let accent = $state<AccentPreference>("ocean");
+
+export function getAccentPreference(): AccentPreference {
+  return accent;
+}
+
+export function applyAccent(a: AccentPreference): void {
+  document.documentElement.dataset.accent = a;
+}
+
+export async function loadAccentPreference(): Promise<void> {
+  try {
+    const saved = await getSetting<string>(ACCENT_SETTING_KEY);
+    if (isAccent(saved)) accent = saved;
+  } catch {
+    // Backend unavailable (e.g. plain browser dev): keep the default accent.
+  }
+  applyAccent(accent);
+}
+
+export async function setAccentPreference(a: AccentPreference): Promise<void> {
+  accent = a;
+  applyAccent(a);
+  await setSetting(ACCENT_SETTING_KEY, a);
+}
+
 /// Re-resolve when the OS theme flips while following "system".
 /// Returns a cleanup function.
 export function watchSystemTheme(): () => void {

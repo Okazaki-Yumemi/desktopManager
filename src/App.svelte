@@ -9,12 +9,17 @@
   import TasksPage from "./pages/TasksPage.svelte";
   import SettingsPage from "./pages/SettingsPage.svelte";
   import { currentPage } from "./stores/router.svelte";
-  import { loadThemePreference, watchSystemTheme } from "./stores/theme.svelte";
+  import {
+    loadAccentPreference,
+    loadThemePreference,
+    watchSystemTheme,
+  } from "./stores/theme.svelte";
 
   const page = $derived(currentPage());
 
   onMount(() => {
     void loadThemePreference();
+    void loadAccentPreference();
     return watchSystemTheme();
   });
 </script>
