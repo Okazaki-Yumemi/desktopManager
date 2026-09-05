@@ -1,4 +1,5 @@
 import { getSetting, setSetting } from "../services/backend";
+import { resolveEnum } from "../lib/prefs";
 
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
@@ -114,3 +115,99 @@ export function watchSystemTheme(): () => void {
   mql.addEventListener("change", onChange);
   return () => mql.removeEventListener("change", onChange);
 }
+
+// ---------------------------------------------------------------------------
+// Enum-valued appearance preferences (M7): surface style, density, glass
+// strength, motion. Each one persists a settings key and mirrors its value
+// onto a `data-*` attribute that tokens.css responds to.
+// ---------------------------------------------------------------------------
+
+type EnumPref<T extends string> = {
+  get(): T;
+  load(): Promise<void>;
+  set(v: T): Promise<void>;
+};
+
+function enumPref<T extends string>(
+  key: string,
+  attr: string,
+  allowed: readonly T[],
+  fallback: T,
+): EnumPref<T> {
+  let value = $state<T>(fallback);
+  return {
+    get: () => value,
+    load: async () => {
+      try {
+        const saved = await getSetting<string>(key);
+        value = resolveEnum(allowed, saved, fallback);
+      } catch {
+        // Backend unavailable (e.g. plain browser dev): keep the default.
+      }
+      document.documentElement.dataset[attr] = value;
+    },
+    set: async (v: T) => {
+      value = v;
+      document.documentElement.dataset[attr] = v;
+      await setSetting(key, v);
+    },
+  };
+}
+
+export type SurfacePreference = "standard" | "soft" | "sharp" | "oled";
+export type DensityPreference = "comfortable" | "compact";
+export type GlassPreference = "off" | "soft" | "normal" | "strong";
+export type MotionPreference = "standard" | "reduced" | "off";
+
+export const SURFACE_PRESETS: ReadonlyArray<{ value: SurfacePreference; label: string }> = [
+  { value: "standard", label: "标准" },
+  { value: "soft", label: "柔和" },
+  { value: "sharp", label: "硬朗" },
+  { value: "oled", label: "纯黑" },
+];
+
+export const DENSITY_OPTIONS: ReadonlyArray<{ value: DensityPreference; label: string }> = [
+  { value: "comfortable", label: "舒适" },
+  { value: "compact", label: "紧凑" },
+];
+
+export const GLASS_OPTIONS: ReadonlyArray<{ value: GlassPreference; label: string }> = [
+  { value: "off", label: "关闭" },
+  { value: "soft", label: "轻" },
+  { value: "normal", label: "标准" },
+  { value: "strong", label: "强" },
+];
+
+export const MOTION_OPTIONS: ReadonlyArray<{ value: MotionPreference; label: string }> = [
+  { value: "standard", label: "标准" },
+  { value: "reduced", label: "减弱" },
+  { value: "off", label: "关闭" },
+];
+
+export const surfacePref = enumPref<SurfacePreference>(
+  "ui.surface",
+  "surface",
+  SURFACE_PRESETS.map((p) => p.value),
+  "standard",
+);
+
+export const densityPref = enumPref<DensityPreference>(
+  "ui.density",
+  "density",
+  DENSITY_OPTIONS.map((p) => p.value),
+  "comfortable",
+);
+
+export const glassPref = enumPref<GlassPreference>(
+  "ui.glass",
+  "glass",
+  GLASS_OPTIONS.map((p) => p.value),
+  "normal",
+);
+
+export const motionPref = enumPref<MotionPreference>(
+  "ui.motion",
+  "motion",
+  MOTION_OPTIONS.map((p) => p.value),
+  "standard",
+);

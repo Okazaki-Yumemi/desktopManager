@@ -34,7 +34,7 @@
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. M6 core **delivered 2026-09-05** (tasks: quick capture Ctrl+N, todo/doing/done cycling, priority/due/notes inline editing, status filters + search; calendar: Monday-start week grid with click-to-create hour slots, all-day + timed events, task linking, day agenda; FocusPage binds a task into the session). Backend is unit-tested; frontend passed svelte-check/eslint plus a degraded browser smoke (structure, empty states, creator prefill) over vite dev without the Tauri backend — in-app visual pass left for the user, so treat both pages as TESTED (not WINDOWS_TESTED/USER_VERIFIED yet). Next: **M7 — Customization**. Deferred: Explorer-restart persistence re-apply.
+M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. M6 core **delivered 2026-09-05** (tasks: quick capture Ctrl+N, todo/doing/done cycling, priority/due/notes inline editing, status filters + search; calendar: Monday-start week grid with click-to-create hour slots, all-day + timed events, task linking, day agenda; FocusPage binds a task into the session). Backend is unit-tested; frontend passed svelte-check/eslint plus a degraded browser smoke (structure, empty states, creator prefill) over vite dev without the Tauri backend — in-app visual pass left for the user, so treat both pages as TESTED (not WINDOWS_TESTED/USER_VERIFIED yet). M7 core **delivered 2026-09-05** (appearance presets standard/soft/sharp/OLED-dark, comfortable/compact density, glass strength off/soft/normal/strong, motion standard/reduced/off — all data-attribute + token driven, persisted via the settings table, D20). Next: **M8 — Reliability**. Deferred: Explorer-restart persistence re-apply; icon sizes, performance mode, layout presets, custom accent picker (M7 leftovers).
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -120,6 +120,15 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-05 (M7 core, TESTED): svelte-check 0/0; eslint 0; vitest 6/6
+  (new resolveEnum allow-list tests). Degraded browser smoke over vite dev:
+  the four new appearance controls flip `data-surface/-density/-glass/-motion`
+  on <html> and the computed tokens follow live (bg #000000 under OLED dark,
+  --space-2 5px compact, --glass-alpha 0.68 + blur(34px) strong, duration 0ms
+  motion-off). In-app visual pass pending user review (locked session).
+  Note: vite served stale transforms for timestamped module URLs while the
+  session was hidden — touch + full reload clears it.
 
 - 2026-09-05 (M6 core, TESTED): cargo test 44 passed + 2 ignored; clippy 0;
   svelte-check 0/0; eslint 0 (rewrote 4 Date-mutation sites non-mutating).

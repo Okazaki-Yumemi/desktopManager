@@ -68,6 +68,8 @@ local persistence; ICS import/export after stabilization.
 
 ## M7 — Customization
 
+> **Status: core delivered 2026-09-05** — surface presets (standard/soft/sharp/OLED-dark), comfortable/compact density, glass strength (off/soft/normal/strong), motion levels (standard/reduced/off), all live-applied via tokens and persisted in settings (D20). Deferred: icon sizes, performance mode, layout presets, custom accent color picker.
+
 Theme presets (Minimal/Windows/Soft/OLED), accent colors, opacity, density,
 icon sizes, animation level, performance mode, layout presets. Focus on
 actually-used polish over settings count.

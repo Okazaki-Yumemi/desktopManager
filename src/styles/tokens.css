@@ -27,8 +27,9 @@
   --duration-normal: 200ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Frosted-glass surfaces (shared blur recipe; tint is theme-specific). */
-  --glass-filter: blur(22px) saturate(1.35);
+  /* Frosted-glass surfaces (shared blur recipe; tint is theme-specific).
+     --glass-blur / --glass-alpha are retuned by [data-glass] presets. */
+  --glass-filter: blur(var(--glass-blur, 22px)) saturate(1.35);
 }
 
 :root[data-theme="light"] {
@@ -37,7 +38,7 @@
   --surface: #ffffff;
   --surface-hover: #edeff2;
   --surface-active: #e4e7eb;
-  --glass: rgb(255 255 255 / 0.55);
+  --glass: rgb(255 255 255 / var(--glass-alpha, 0.55));
   --text-primary: #1a1c1e;
   --text-secondary: #5d6167;
   --text-tertiary: #8a8f98;
@@ -57,7 +58,7 @@
   --surface: #232529;
   --surface-hover: #2b2e33;
   --surface-active: #33373d;
-  --glass: rgb(35 37 41 / 0.55);
+  --glass: rgb(35 37 41 / var(--glass-alpha, 0.55));
   --text-primary: #e4e6e9;
   --text-secondary: #a2a6ad;
   --text-tertiary: #6f747c;
@@ -110,4 +111,78 @@
 :root[data-theme="dark"][data-accent="rose"] {
   --accent: #ef8fa3;
   --accent-soft: rgb(239 143 163 / 0.14);
+}
+
+/*
+ * Surface-style presets (M7) — radius/shadow character and palette variants.
+ * "standard" needs no override; "oled" re-tints the dark palette only and is
+ * a no-op under the light theme.
+ */
+:root[data-surface="soft"] {
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --shadow: 0 2px 4px rgb(0 0 0 / 0.04), 0 4px 14px rgb(0 0 0 / 0.05);
+}
+:root[data-theme="dark"][data-surface="soft"] {
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.3);
+}
+:root[data-surface="sharp"] {
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 6px;
+  --shadow: none;
+}
+:root[data-theme="dark"][data-surface="oled"] {
+  --bg: #000000;
+  --surface: #0d0e10;
+  --surface-hover: #141518;
+  --surface-active: #1a1c1f;
+  --border: #222428;
+  --border-strong: #2c2f34;
+  --glass: rgb(10 11 13 / var(--glass-alpha, 0.35));
+}
+
+/* Density (M7): compact shrinks the spacing scale and the type ramp. */
+:root[data-density="compact"] {
+  --space-1: 2px;
+  --space-2: 5px;
+  --space-3: 9px;
+  --space-4: 12px;
+  --space-5: 18px;
+  --space-6: 24px;
+  --font-size-s: 11.5px;
+  --font-size-m: 12.5px;
+  --font-size-l: 15px;
+  --font-size-xl: 19px;
+}
+
+/* Glass strength (M7): tint alpha + blur radius per level. */
+:root[data-glass="off"] {
+  --glass-filter: none;
+  --glass-alpha: 1;
+}
+:root[data-glass="soft"] {
+  --glass-blur: 14px;
+  --glass-alpha: 0.42;
+}
+:root[data-glass="strong"] {
+  --glass-filter: blur(34px) saturate(1.5);
+  --glass-alpha: 0.68;
+}
+
+/* Motion levels (M7): shorter durations, or none at all. */
+:root[data-motion="reduced"] {
+  --duration-fast: 60ms;
+  --duration-normal: 120ms;
+}
+:root[data-motion="off"] {
+  --duration-fast: 0ms;
+  --duration-normal: 0ms;
+}
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
 }

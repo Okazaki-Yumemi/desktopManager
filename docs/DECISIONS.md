@@ -209,3 +209,20 @@ same way so external items render real shell icons.
   This remains read-only metadata/file-open policy; nothing is moved.
 - The 今天 page is a welcome screen (big clock + per-day motto + today's
   focus total); backend status and the quick-start hint moved to Settings.
+
+
+## D20 — Appearance preferences ride `data-*` attributes and tokens (2026-09-05, M7)
+
+- Four enum preferences (surface style, density, glass strength, motion) are
+  stored in the existing settings table (`ui.surface`, `ui.density`,
+  `ui.glass`, `ui.motion`) and mirrored onto `<html data-*>` attributes by a
+  shared `enumPref` factory. tokens.css owns every visual consequence; no
+  component reads the attributes. Values are validated through a pure
+  `resolveEnum` allow-list helper (unit tested), so a corrupted settings row
+  degrades to the default instead of breaking the UI.
+- Glass strength tunes `--glass-alpha` / `--glass-blur` which the theme
+  tints consume via `var(…)`; `off` sets `--glass-filter: none` and alpha 1
+  (solid panels). The `oled` preset re-tints only the dark palette — under
+  the light theme it is honestly a no-op rather than a broken hybrid.
+  Motion `off` zeroes the duration tokens and force-disables transitions and
+  keyframes globally.

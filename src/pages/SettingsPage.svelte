@@ -2,11 +2,23 @@
   import { onMount } from "svelte";
   import {
     ACCENT_PRESETS,
+    DENSITY_OPTIONS,
+    GLASS_OPTIONS,
+    MOTION_OPTIONS,
+    SURFACE_PRESETS,
+    densityPref,
     getAccentPreference,
     getThemePreference,
+    glassPref,
+    motionPref,
     setAccentPreference,
     setThemePreference,
+    surfacePref,
     type AccentPreference,
+    type DensityPreference,
+    type GlassPreference,
+    type MotionPreference,
+    type SurfacePreference,
     type ThemePreference,
   } from "../stores/theme.svelte";
   import {
@@ -86,6 +98,43 @@
       await setAccentPreference(value);
     } catch (err) {
       pushToast("error", `无法保存强调色：${String(err)}`);
+    }
+  }
+
+  const currentSurface = $derived(surfacePref.get());
+  const currentDensity = $derived(densityPref.get());
+  const currentGlass = $derived(glassPref.get());
+  const currentMotion = $derived(motionPref.get());
+
+  async function chooseSurface(value: SurfacePreference) {
+    try {
+      await surfacePref.set(value);
+    } catch (err) {
+      pushToast("error", `无法保存外观风格：${String(err)}`);
+    }
+  }
+
+  async function chooseDensity(value: DensityPreference) {
+    try {
+      await densityPref.set(value);
+    } catch (err) {
+      pushToast("error", `无法保存密度：${String(err)}`);
+    }
+  }
+
+  async function chooseGlass(value: GlassPreference) {
+    try {
+      await glassPref.set(value);
+    } catch (err) {
+      pushToast("error", `无法保存毛玻璃强度：${String(err)}`);
+    }
+  }
+
+  async function chooseMotion(value: MotionPreference) {
+    try {
+      await motionPref.set(value);
+    } catch (err) {
+      pushToast("error", `无法保存动效偏好：${String(err)}`);
     }
   }
 
@@ -264,6 +313,82 @@
             style={`--swatch: ${SWATCH[a.value]}`}
             onclick={() => chooseAccent(a.value)}
           ></button>
+        {/each}
+      </div>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">外观风格</span>
+        <span class="row-desc">圆角与阴影的观感；“纯黑”只在深色主题下生效。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="外观风格">
+        {#each SURFACE_PRESETS as s (s.value)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={currentSurface === s.value}
+            class:active={currentSurface === s.value}
+            onclick={() => chooseSurface(s.value)}
+          >
+            {s.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">密度</span>
+        <span class="row-desc">“紧凑”会缩小间距与字号，一屏能看到更多内容。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="密度">
+        {#each DENSITY_OPTIONS as d (d.value)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={currentDensity === d.value}
+            class:active={currentDensity === d.value}
+            onclick={() => chooseDensity(d.value)}
+          >
+            {d.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">毛玻璃强度</span>
+        <span class="row-desc">卡片透出背景的程度；关闭后变为实色面板。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="毛玻璃强度">
+        {#each GLASS_OPTIONS as g (g.value)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={currentGlass === g.value}
+            class:active={currentGlass === g.value}
+            onclick={() => chooseGlass(g.value)}
+          >
+            {g.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">动效</span>
+        <span class="row-desc">“减弱”缩短过渡；“关闭”立刻切换所有界面状态。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="动效">
+        {#each MOTION_OPTIONS as m (m.value)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={currentMotion === m.value}
+            class:active={currentMotion === m.value}
+            onclick={() => chooseMotion(m.value)}
+          >
+            {m.label}
+          </button>
         {/each}
       </div>
     </div>

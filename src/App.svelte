@@ -10,8 +10,12 @@
   import SettingsPage from "./pages/SettingsPage.svelte";
   import { currentPage } from "./stores/router.svelte";
   import {
+    densityPref,
+    glassPref,
     loadAccentPreference,
     loadThemePreference,
+    motionPref,
+    surfacePref,
     watchSystemTheme,
   } from "./stores/theme.svelte";
   import { initWallpaper, wallpaper } from "./stores/wallpaper.svelte";
@@ -21,6 +25,10 @@
   onMount(() => {
     void loadThemePreference();
     void loadAccentPreference();
+    void surfacePref.load();
+    void densityPref.load();
+    void glassPref.load();
+    void motionPref.load();
     void initWallpaper();
     return watchSystemTheme();
   });
