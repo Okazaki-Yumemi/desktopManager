@@ -65,6 +65,21 @@
     return `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getMonth() + 1}月${b.getDate()}日`;
   });
 
+  /**
+   * Per-day render model for the week grid. Items are computed once per day
+   * (instead of per row) and the weekend/today flags drive the column tint.
+   */
+  const weekDays = $derived(
+    days.map((d, i) => ({
+      d,
+      i,
+      weekend: d.getDay() === 0 || d.getDay() === 6,
+      today: isToday(d),
+      all: dayItems(d).filter((e) => e.allDay),
+      timed: dayItems(d).filter((e) => !e.allDay),
+    })),
+  );
+
   // Month view: 42 cells starting from the Monday on/before the 1st.
   const monthStart = $derived(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
   const monthCells = $derived.by(() => {
@@ -289,7 +304,7 @@
   });
 </script>
 
-<div class="calendar-layout">
+<div class="calendar-layout page-enter">
   <div class="calendar">
     <header class="head">
     <div>
@@ -380,61 +395,79 @@
 
   {#if view === "week"}
   <div class="week glass" role="grid" aria-label="周视图">
-    {#each days as d, i (d.getTime())}
-      {@const dayAll = dayItems(d).filter((e) => e.allDay)}
-      {@const dayTimed = dayItems(d).filter((e) => !e.allDay)}
-      <div class="col" class:today={isToday(d)} class:selected={selectedDay.getTime() === d.getTime()}>
-        <button
-          type="button"
-          class="col-head"
-          onclick={() => (selectedDay = d)}
-          ondblclick={() => openCreator(d, null)}
-        >
-          <span class="dow">周{WEEKDAYS[i]}</span>
-          <span class="dom" class:mark={isToday(d)}>{d.getDate()}</span>
-        </button>
-        <div class="allday">
-          {#each dayAll as e (e.key)}
-            <button
-              type="button"
-              class="ev all"
-              class:sjtu={e.kind === "sjtu"}
-              title={e.title}
-              onclick={() => (selectedDay = d)}
-            >
-              {e.title}
-            </button>
-          {/each}
-        </div>
-        <div class="grid" style={`height: ${24 * HOUR_H}px`}>
-          {#each HOURS as h (h)}
-            <button
-              type="button"
-              class="slot"
-              style={`top: ${h * HOUR_H}px; height: ${HOUR_H}px`}
-              title="{d.getMonth() + 1}月{d.getDate()}日 {String(h).padStart(2, '0')}:00 — 点击新建"
-              onclick={() => openCreator(d, h)}
-            ></button>
-          {/each}
-          {#if isToday(d)}
-            <div class="now-line" style={`top: ${(nowPct / 100) * 24 * HOUR_H}px`}></div>
-          {/if}
-          {#each dayTimed as e (e.key)}
-            {@const s = Math.max(e.startsAt, d.getTime())}
-            {@const en = Math.min(e.endsAt, d.getTime() + DAY_MS)}
-            {@const top = ((new Date(s).getHours() * 60 + new Date(s).getMinutes()) / 1440) * 24 * HOUR_H}
-            {@const height = Math.max(((en - s) / DAY_MS) * 24 * HOUR_H, 18)}
-            <div
-              class="ev timed"
-              class:linked={e.taskId !== null}
-              class:sjtu={e.kind === "sjtu"}
-              style={`top: ${top}px; height: ${height}px`}
-              title={`${timeOf(e.startsAt)}–${timeOf(e.endsAt)} ${e.title}`}
-            >
-              {e.title}
-            </div>
-          {/each}
-        </div>
+    <div class="corner" aria-hidden="true"></div>
+    {#each weekDays as day (day.d.getTime())}
+      <button
+        type="button"
+        class="col-head"
+        class:last-col={day.i === 6}
+        class:today={day.today}
+        class:selected={selectedDay.getTime() === day.d.getTime()}
+        onclick={() => (selectedDay = day.d)}
+        ondblclick={() => openCreator(day.d, null)}
+      >
+        <span class="dow">周{WEEKDAYS[day.i]}</span>
+        <span class="dom" class:mark={day.today}>{day.d.getDate()}</span>
+      </button>
+    {/each}
+
+    <div class="gutter allday-label" aria-hidden="true">全天</div>
+    {#each weekDays as day (day.d.getTime())}
+      <div class="allday" class:last-col={day.i === 6} class:weekend={day.weekend}>
+        {#each day.all as e (e.key)}
+          <button
+            type="button"
+            class="ev all"
+            class:sjtu={e.kind === "sjtu"}
+            title={e.title}
+            onclick={() => (selectedDay = day.d)}
+          >
+            {e.title}
+          </button>
+        {/each}
+      </div>
+    {/each}
+
+    <div class="gutter hours" style={`height: ${24 * HOUR_H}px`} aria-hidden="true">
+      {#each HOURS as h (h)}
+        <span class="hour" style={`top: ${h * HOUR_H}px`}>{String(h).padStart(2, "0")}:00</span>
+      {/each}
+    </div>
+    {#each weekDays as day (day.d.getTime())}
+      <div
+        class="grid"
+        class:last-col={day.i === 6}
+        class:weekend={day.weekend}
+        class:today={day.today}
+        style={`height: ${24 * HOUR_H}px`}
+      >
+        {#each HOURS as h (h)}
+          <button
+            type="button"
+            class="slot"
+            style={`top: ${h * HOUR_H}px; height: ${HOUR_H}px`}
+            title="{day.d.getMonth() + 1}月{day.d.getDate()}日 {String(h).padStart(2, '0')}:00 — 点击新建"
+            onclick={() => openCreator(day.d, h)}
+          ></button>
+        {/each}
+        {#if day.today}
+          <div class="now-line" style={`top: ${(nowPct / 100) * 24 * HOUR_H}px`}></div>
+        {/if}
+        {#each day.timed as e (e.key)}
+          {@const s = Math.max(e.startsAt, day.d.getTime())}
+          {@const en = Math.min(e.endsAt, day.d.getTime() + DAY_MS)}
+          {@const top = ((new Date(s).getHours() * 60 + new Date(s).getMinutes()) / 1440) * 24 * HOUR_H}
+          {@const height = Math.max(((en - s) / DAY_MS) * 24 * HOUR_H, 18)}
+          <div
+            class="ev timed"
+            class:linked={e.taskId !== null}
+            class:sjtu={e.kind === "sjtu"}
+            style={`top: ${top}px; height: ${height}px`}
+            title={`${timeOf(e.startsAt)}–${timeOf(e.endsAt)} ${e.title}`}
+          >
+            {e.title}
+          </div>
+        {/each}
       </div>
     {/each}
   </div>
@@ -563,8 +596,9 @@
 
   h1 {
     margin: 0 0 var(--space-1);
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .muted {
@@ -588,10 +622,18 @@
     backdrop-filter: var(--glass-filter);
     color: var(--text-secondary);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
   }
 
   .nav-btn:hover {
     background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .nav-btn.today {
+    color: var(--accent);
+    font-weight: 600;
   }
 
   .btn {
@@ -601,13 +643,29 @@
     background: var(--surface);
     color: var(--text-secondary);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .btn.primary {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--accent);
+    border-color: transparent;
+    background: var(--grad-accent);
+    color: var(--accent-contrast);
     font-weight: 600;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn.primary:hover {
+    background: var(--grad-accent);
+    color: var(--accent-contrast);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
   }
 
   .page-actions {
@@ -626,12 +684,13 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     margin-bottom: var(--space-3);
-    border: 1px solid var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border-strong));
     border-radius: var(--radius-m);
     background: var(--glass);
     backdrop-filter: var(--glass-filter);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow-sm);
     font-size: var(--font-size-s);
   }
 
@@ -640,7 +699,7 @@
     min-width: 160px;
     padding: 6px 10px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-m);
+    border-radius: var(--radius-s);
     background: var(--surface);
     color: var(--text-primary);
     outline: none;
@@ -656,15 +715,19 @@
   .creator input,
   .creator select {
     border: 1px solid var(--border);
-    border-radius: var(--radius-m);
+    border-radius: var(--radius-s);
     background: var(--surface);
     color: var(--text-primary);
     padding: 4px 6px;
   }
 
+  /* Week grid: a time gutter + 7 day columns across three shared rows
+     (header / all-day / time grid) so cells stay aligned even when the
+     all-day row grows. */
   .week {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: 46px repeat(7, 1fr);
+    grid-template-rows: auto auto auto;
     border: 1px solid var(--border);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -672,16 +735,43 @@
     backdrop-filter: var(--glass-filter);
   }
 
-  .col {
+  .corner {
+    grid-row: 1;
     border-right: 1px solid var(--border);
-    min-width: 0;
+    border-bottom: 1px solid var(--border);
   }
 
-  .col:last-child {
-    border-right: none;
+  .gutter {
+    grid-column: 1;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .allday-label {
+    grid-row: 2;
+    display: grid;
+    place-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .hours {
+    grid-row: 3;
+  }
+
+  .hour {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+    line-height: 1;
   }
 
   .col-head {
+    grid-row: 1;
     display: flex;
     align-items: baseline;
     justify-content: center;
@@ -689,18 +779,34 @@
     width: 100%;
     padding: var(--space-2) 0;
     border: none;
+    border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  .col-head.last-col,
+  .allday.last-col,
+  .grid.last-col {
+    border-right: none;
   }
 
   .col-head:hover {
     background: var(--surface-hover);
   }
 
-  .col.selected .col-head {
+  .col-head.selected {
     background: var(--accent-soft);
+  }
+
+  .weekend {
+    background: color-mix(in srgb, var(--text-tertiary) 6%, transparent);
+  }
+
+  .grid.today {
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
   }
 
   .dow {
@@ -713,15 +819,23 @@
   }
 
   .dom.mark {
-    color: var(--accent);
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--grad-accent);
+    color: var(--accent-contrast);
   }
 
   .allday {
+    grid-row: 2;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-height: 8px;
-    padding: 2px 4px;
+    min-height: 26px;
+    padding: 3px 4px;
+    border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
   }
 
@@ -732,12 +846,13 @@
     text-align: left;
     border: none;
     border-left: 3px solid var(--accent);
-    border-radius: var(--radius-s);
-    background: var(--accent-soft);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     color: var(--text-primary);
     font-size: var(--font-size-s);
-    padding: 1px 5px;
+    padding: 2px 6px;
     cursor: default;
+    box-shadow: var(--shadow-sm);
   }
 
   .ev.all {
@@ -751,7 +866,7 @@
   /* SJTU-synced entries: read-only, warning-amber, tagged in the agenda. */
   .ev.sjtu {
     border-left-color: var(--warn);
-    background: color-mix(in srgb, var(--warn) 14%, transparent);
+    background: color-mix(in srgb, var(--warn) 16%, var(--surface));
   }
 
   .sjtu-tag {
@@ -772,6 +887,8 @@
 
   .grid {
     position: relative;
+    grid-row: 3;
+    border-right: 1px solid var(--border);
   }
 
   .slot {
@@ -782,6 +899,7 @@
     border-top: 1px solid var(--border);
     background: transparent;
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out);
   }
 
   .slot:hover {
@@ -793,9 +911,25 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: var(--error);
+    background: linear-gradient(
+      90deg,
+      var(--error),
+      color-mix(in srgb, var(--error) 30%, transparent)
+    );
     pointer-events: none;
     z-index: 2;
+  }
+
+  .now-line::before {
+    content: "";
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--error);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 22%, transparent);
   }
 
   .ev.timed {
@@ -804,6 +938,7 @@
     right: 3px;
     z-index: 1;
     pointer-events: none;
+    line-height: 1.4;
   }
 
   .agenda {
@@ -811,6 +946,7 @@
     padding: var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius-l);
+    box-shadow: var(--shadow-sm);
   }
 
   .agenda h2 {
@@ -825,13 +961,20 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 2px;
   }
 
   .agenda li {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    padding: 5px 8px;
+    border-radius: var(--radius-m);
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  .agenda li:hover {
+    background: var(--surface-hover);
   }
 
   .when {
@@ -865,11 +1008,20 @@
     background: transparent;
     color: var(--text-tertiary);
     cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
+  }
+
+  .agenda li:hover .del,
+  .del:focus-visible {
+    opacity: 1;
   }
 
   .del:hover {
     color: var(--error);
-    background: var(--surface-hover);
+    background: color-mix(in srgb, var(--error) 10%, transparent);
   }
 
   .view-toggle {
@@ -877,15 +1029,22 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-m);
     overflow: hidden;
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
   }
 
   .view-toggle button {
     padding: 5px 12px;
     border: none;
-    background: var(--glass);
-    backdrop-filter: var(--glass-filter);
+    background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .view-toggle button + button {
+    border-left: 1px solid var(--border);
   }
 
   .view-toggle button.active {
@@ -975,8 +1134,8 @@
   }
 
   .cell.today .num {
-    background: var(--accent);
-    color: #fff;
+    background: var(--grad-accent);
+    color: var(--accent-contrast);
   }
 
   .chips {
@@ -996,11 +1155,11 @@
     overflow: hidden;
     padding: 1px 6px 1px 5px;
     border-left: 3px solid var(--accent);
-    border-radius: 4px;
-    background: var(--accent-soft);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface));
     color: var(--text-primary);
     font-size: 11px;
-    line-height: 1.5;
+    line-height: 1.6;
     text-align: left;
   }
 
@@ -1019,7 +1178,7 @@
 
   .chip.sjtu {
     border-left-color: var(--warn);
-    background: color-mix(in srgb, var(--warn) 14%, transparent);
+    background: color-mix(in srgb, var(--warn) 16%, var(--surface));
   }
 
   .chip.sjtu .ct {

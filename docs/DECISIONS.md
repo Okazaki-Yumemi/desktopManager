@@ -331,3 +331,37 @@ same way so external items render real shell icons.
   so the frontend re-arms the sync button instead of staying disabled.
   End-to-end verified in the real app: auto-login via persisted session →
   sniffed payload → DB replace → sidebar/week view → auto-close.
+
+## D25 — Visual language 1.1.0: tokens first, structure where it serves correctness (2026-09-06, R23)
+
+The v1.1.0 round is a full-frontend polish pass (user request). Ground
+rules, in charter priority order (correctness/usability above visual
+polish), and what they produced:
+
+- **Tokens stay the single source of truth.** New primitives are theme
+  blocks, not component constants: a shadow ramp (`--shadow-sm/md/lg`,
+  `--shadow` aliases md), `--grad-accent` (accent-derived gradient, works
+  with the custom color picker because it is `color-mix` on `--accent`),
+  `--accent-contrast` (readable text ON accent: white in light, dark navy
+  in dark — the old `#fff`-on-light-blue primary buttons failed contrast),
+  and `--accent-ring` for focus glows.
+- **The `.glass` class was defined globally — it previously did not
+  exist**, so the 交大 sidebar and the 当日议程 panel silently rendered
+  with no background at all. One utility in `base.css` now provides the
+  frosted recipe; scoped styles keep border/radius.
+- **Focus visibility is global** (`:focus-visible` ring; text fields swap
+  the outline for a soft glow so it never fights their border styles).
+- **Animations are opt-in utility classes** (`page-enter`, `toast-enter`)
+  and are neutralized by `data-motion="off"` and `prefers-reduced-motion`
+  — the M7 motion contract still holds.
+- **The week view was restructured into one shared grid** (time gutter +
+  7 day columns × header/all-day/time rows). This is a usability/correctness
+  fix, not decoration: previously each column was an independent flex
+  column, so a day with all-day events pushed its time grid out of
+  alignment with the other columns; and there were no hour labels at all.
+  Hour labels, weekend tint, and a gradient now-line with a dot came with
+  the restructure for free.
+- **Stale copy is part of polish**: the settings 快速上手 section still
+  said 任务/日历 "will arrive with M6" and the footer note promised M7
+  features that shipped long ago; both rewritten to describe current
+  behavior.

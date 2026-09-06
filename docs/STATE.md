@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-06 (v1.0.1 hotfix round — sync window deadlock + sniffing + month view).
+> Update after every significant work session. Last updated: 2026-09-06 (v1.1.0 — full frontend visual polish, M13).
 
 ## Morning handoff (overnight run 2026-09-05 → 2026-09-06) — READ ME FIRST
 
@@ -164,16 +164,14 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## Next actions
 
-1. Publish v1.0.1 (needs the user's GitHub auth once): artifacts at
+1. Publish v1.1.0 (needs the user's GitHub auth once): artifacts at
    `src-tauri/target/release/bundle/{msi,nsis}/` plus
-   `src-tauri/target/release/DesktopManager_1.0.1_x64.zip`
-   (`gh release create v1.0.1 --title "DesktopManager v1.0.1" --notes "…" <files>`).
+   `src-tauri/target/release/DesktopManager_1.1.0_x64.zip`.
 2. Fix the v1.0.0 GitHub release: it carries the WRONG MSI
-   (`DesktopManager_0.1.0_x64_en-US.msi` was uploaded instead of the
-   1.0.0 one) — delete that asset, or the whole release, and point
-   downloads at v1.0.1.
-3. User live test of the month-view redesign (event chips) and a real
-   course-table sync (week view inside the sync window refreshes data).
+   (`DesktopManager_0.1.0_x64_en-US.msi`) — delete that asset or the
+   release; point downloads at the newest tag.
+3. User field test of the new look (dark/light, density, wallpaper) —
+   week view now has a time gutter; report anything hard to read.
 
 ## Known blockers
 
@@ -181,6 +179,15 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-06 (v1.1.0 frontend polish, TESTED/WINDOWS_TESTED): svelte-check
+  0/0, eslint 0, vite build ok, cargo test 63/63, clippy 0, release build
+  exit 0 (MSI 3.2 MB / NSIS 2.3 MB / zip 5.2 MB / exe 6.3 MB). Real-app
+  page-by-page pass with occluded-window captures + UIA bounds while the
+  user was present (they explored the new settings page themselves):
+  今天/桌面/专注/日历周+月/任务/设置 all render correctly — week-view
+  time gutter aligns with grid lines, gradient now-line + today pill,
+  focus ring countdown, month chips + agenda 交大 tag, sidebar v1.1.0 · M13.
 
 - 2026-09-06 (v1.0.1 hotfix round, TESTED/WINDOWS_TESTED/USER_VERIFIED):
   cargo test 63/63, clippy 0, svelte-check 0, eslint 0, release build

@@ -155,7 +155,7 @@
   }
 </script>
 
-<div class="tasks">
+<div class="tasks page-enter">
   <header class="head">
     <div>
       <h1>任务</h1>
@@ -321,8 +321,9 @@
 
   h1 {
     margin: 0 0 var(--space-1);
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .muted {
@@ -341,10 +342,18 @@
     color: var(--text-primary);
     outline: none;
     font-size: var(--font-size-m);
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .capture input::placeholder {
+    color: var(--text-tertiary);
   }
 
   .capture input:focus {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
   }
 
   .chips {
@@ -367,16 +376,37 @@
     color: var(--text-secondary);
     font-size: var(--font-size-s);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .chip:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .chip.active {
     border-color: var(--accent);
     background: var(--accent-soft);
     color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 
   .count {
-    color: var(--text-tertiary);
+    font-size: 11px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--surface-active);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .chip.active .count {
+    background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+    color: var(--accent);
   }
 
   .search {
@@ -424,6 +454,13 @@
     border-radius: var(--radius-m);
     background: var(--glass);
     backdrop-filter: var(--glass-filter);
+    transition: border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .row:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
   }
 
   .status {
@@ -438,6 +475,11 @@
     background: transparent;
     color: var(--text-tertiary);
     cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .status:hover {
+    color: var(--accent);
   }
 
   .status.doing {
@@ -493,10 +535,15 @@
     flex-shrink: 0;
     font-size: var(--font-size-s);
     color: var(--text-tertiary);
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--surface-active);
+    font-variant-numeric: tabular-nums;
   }
 
   .due.overdue {
     color: var(--error);
+    background: color-mix(in srgb, var(--error) 10%, transparent);
   }
 
   .note-dot {
@@ -602,12 +649,24 @@
     background: var(--surface);
     color: var(--text-secondary);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .btn.primary {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--accent);
+    border-color: transparent;
+    background: var(--grad-accent);
+    color: var(--accent-contrast);
     font-weight: 600;
+  }
+
+  .btn.primary:hover {
+    background: var(--grad-accent);
+    color: var(--accent-contrast);
   }
 </style>

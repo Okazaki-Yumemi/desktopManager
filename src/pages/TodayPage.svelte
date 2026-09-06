@@ -70,7 +70,7 @@
   });
 </script>
 
-<div class="today">
+<div class="today page-enter">
   <p class="greeting">{dateLine}</p>
   <h1 class="clock" aria-label="当前时间">
     {time}<span class="seconds">{seconds}</span>
@@ -97,6 +97,7 @@
 
 <style>
   .today {
+    position: relative;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -105,6 +106,33 @@
     text-align: center;
     gap: var(--space-2);
     padding: var(--space-6) 0;
+  }
+
+  /* Ambient accent glows behind the clock — purely decorative. */
+  .today::before,
+  .today::after {
+    content: "";
+    position: absolute;
+    width: 440px;
+    height: 440px;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.22;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .today::before {
+    background: radial-gradient(circle, var(--accent), transparent 70%);
+    top: 6%;
+    left: 14%;
+  }
+
+  .today::after {
+    background: radial-gradient(circle, var(--accent), transparent 70%);
+    bottom: 2%;
+    right: 12%;
+    opacity: 0.14;
   }
 
   .greeting {
@@ -120,14 +148,30 @@
     font-weight: 600;
     line-height: 1;
     letter-spacing: 0.02em;
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(
+      180deg,
+      var(--text-primary) 30%,
+      color-mix(in srgb, var(--text-primary) 55%, var(--accent))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+    .clock {
+      background: none;
+      -webkit-text-fill-color: initial;
+      color: var(--text-primary);
+    }
   }
 
   .seconds {
     font-size: 0.32em;
-    color: var(--text-tertiary);
     margin-left: 0.15em;
     font-weight: 400;
+    -webkit-text-fill-color: var(--text-tertiary);
   }
 
   .motto {
@@ -147,13 +191,25 @@
   }
 
   .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: var(--font-size-s);
-    padding: 2px 12px;
+    padding: 3px 12px;
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--glass);
     backdrop-filter: var(--glass-filter);
     color: var(--text-tertiary);
+  }
+
+  .pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+    flex-shrink: 0;
   }
 
   .pill.ok {

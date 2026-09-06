@@ -24,25 +24,88 @@ body {
   height: 100vh;
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
 
+/* Shared frosted-glass panel recipe. Elements carrying class="glass" get the
+   translucent background + blur; border/radius stay per-component. */
+.glass {
+  background: var(--glass);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+}
+
+/* Keyboard focus gets a visible ring everywhere; text fields trade the
+   outline for a soft accent glow so it never fights their border styles. */
+:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+  border-color: var(--accent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 5px;
-  border: 2px solid transparent;
+  background: color-mix(in srgb, var(--text-tertiary) 38%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-tertiary) 62%, transparent);
+  border: 3px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Shared entrance animations. data-motion="off" and prefers-reduced-motion
+   neutralize them globally, so components can opt in freely. */
+.page-enter {
+  animation: page-in var(--duration-normal) var(--ease-out) both;
+}
+
+.toast-enter {
+  animation: toast-in var(--duration-normal) var(--ease-out) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

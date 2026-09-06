@@ -554,7 +554,7 @@
   }
 </script>
 
-<div class="desktop">
+<div class="desktop page-enter">
   <header class="head">
     <div>
       <h1>桌面</h1>
@@ -928,8 +928,9 @@
 
   h1 {
     margin: 0 0 var(--space-1);
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .muted {
@@ -950,12 +951,16 @@
     color: var(--text-secondary);
     cursor: pointer;
     transition: background var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out);
+      color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
   .refresh:hover:not(:disabled) {
     background: var(--surface-hover);
     color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
   }
 
   .refresh:disabled {
@@ -999,7 +1004,8 @@
     font-size: var(--font-size-s);
     cursor: pointer;
     transition: border-color var(--duration-fast) var(--ease-out),
-      background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+      background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
   .tree-elbow {
@@ -1018,6 +1024,7 @@
     border-color: var(--accent);
     background: var(--accent-soft);
     color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 
   .chip.drop {
@@ -1034,8 +1041,13 @@
   }
 
   .count {
-    font-size: var(--font-size-s);
-    color: var(--text-tertiary);
+    font-size: 11px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--surface-active);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
   }
 
   .chip-actions {
@@ -1118,10 +1130,18 @@
     backdrop-filter: var(--glass-filter);
     color: var(--text-tertiary);
     max-width: 420px;
+    transition: border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
   .search:focus-within {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+    color: var(--accent);
+  }
+
+  .search:focus-within input {
+    color: var(--text-primary);
   }
 
   .search input {
@@ -1156,16 +1176,21 @@
     cursor: pointer;
     user-select: none;
     transition: border-color var(--duration-fast) var(--ease-out),
-      background var(--duration-fast) var(--ease-out);
+      background var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
   .item:hover {
     background: var(--surface-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
   }
 
   .item.selected {
     border-color: var(--accent);
     background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 
   .icon {
@@ -1173,9 +1198,10 @@
     place-items: center;
     width: var(--desktop-icon, 36px);
     height: var(--desktop-icon, 36px);
-    border-radius: var(--radius-s);
+    border-radius: var(--radius-m);
     flex-shrink: 0;
     color: var(--text-secondary);
+    background: color-mix(in srgb, var(--surface-active) 55%, transparent);
   }
 
   .icon.kind-folder {
@@ -1275,8 +1301,11 @@
   }
 
   .state {
-    padding: var(--space-6) 0;
+    padding: var(--space-6) var(--space-4);
     text-align: center;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-l);
+    background: color-mix(in srgb, var(--surface) 45%, transparent);
   }
 
   .state button {
@@ -1309,7 +1338,7 @@
     backdrop-filter: var(--glass-filter);
     color: var(--text-primary);
     font-size: var(--font-size-s);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-lg);
   }
 
   .drop-overlay {

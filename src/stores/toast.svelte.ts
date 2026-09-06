@@ -4,6 +4,8 @@ export interface Toast {
   message: string;
 }
 
+export type ToastKind = Toast["kind"];
+
 const items = $state<Toast[]>([]);
 let nextId = 1;
 

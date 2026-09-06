@@ -1,6 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import {
+    Bell,
+    Database,
+    GraduationCap,
+    Image as ImageIcon,
+    Info,
+    Keyboard,
+    LayoutTemplate,
+    Palette,
+    Zap,
+  } from "@lucide/svelte";
+  import {
     ACCENT_PRESETS,
     DENSITY_OPTIONS,
     GLASS_OPTIONS,
@@ -343,11 +354,11 @@
   }
 </script>
 
-<div class="settings">
+<div class="settings page-enter">
   <h1>设置</h1>
 
   <section class="group" aria-label="外观">
-    <h2>外观</h2>
+    <h2><Palette size={16} aria-hidden="true" /> 外观</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title">主题</span>
@@ -498,7 +509,7 @@
   </section>
 
   <section class="group" aria-label="通知">
-    <h2>通知</h2>
+    <h2><Bell size={16} aria-hidden="true" /> 通知</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title">完成提示音</span>
@@ -528,7 +539,7 @@
   </section>
 
   <section class="group" aria-label="上海交大日程">
-    <h2>上海交大日程</h2>
+    <h2><GraduationCap size={16} aria-hidden="true" /> 上海交大日程</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title">课程表同步</span>
@@ -552,7 +563,7 @@
   </section>
 
   <section class="group" aria-label="自定义背景">
-    <h2>自定义背景</h2>
+    <h2><ImageIcon size={16} aria-hidden="true" /> 自定义背景</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title">背景图片</span>
@@ -594,7 +605,7 @@
   </section>
 
   <section class="group" aria-label="桌面布局快照">
-    <h2>桌面布局快照</h2>
+    <h2><LayoutTemplate size={16} aria-hidden="true" /> 桌面布局快照</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title">保存当前布局</span>
@@ -647,7 +658,7 @@
   </section>
 
   <section class="group" aria-label="全局快捷键">
-    <h2>全局快捷键</h2>
+    <h2><Keyboard size={16} aria-hidden="true" /> 全局快捷键</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title mono">{shortcut ? formatBinding(shortcut.binding) : "…"}</span>
@@ -672,7 +683,7 @@
   </section>
 
   <section class="group" aria-label="快速上手">
-    <h2>快速上手</h2>
+    <h2><Zap size={16} aria-hidden="true" /> 快速上手</h2>
     <p class="row-desc">
       在 Windows 任意位置按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>
       即可显示或隐藏本窗口。关闭窗口只是隐藏到托盘 —— 想彻底退出请使用托盘菜单。
@@ -681,11 +692,11 @@
       桌面页：点击集合筛选，把项目拖到集合上归类（只记元数据，不会移动文件）；
       点集合上的铅笔可重命名，文件夹引用可用箭头在应用内展开。
     </p>
-    <p class="row-desc">专注页提供番茄钟与正计时；任务与日历将随 M6 到来。</p>
+    <p class="row-desc">专注页提供番茄钟与正计时；日历页支持周/月视图、日程创建与 ICS 导出；任务页支持状态流转与优先级。</p>
   </section>
 
   <section class="group" aria-label="系统信息">
-    <h2>系统信息</h2>
+    <h2><Info size={16} aria-hidden="true" /> 系统信息</h2>
     {#if info}
       <dl class="kv">
         <div>
@@ -719,7 +730,7 @@
   </section>
 
   <section class="group" aria-label="数据管理">
-    <h2>数据管理</h2>
+    <h2><Database size={16} aria-hidden="true" /> 数据管理</h2>
     <div class="row">
       <div class="row-text">
         <span class="row-title">清空集合</span>
@@ -752,7 +763,7 @@
     </div>
   </section>
 
-  <p class="note">更多设置（自定义强调色、密度、性能模式）将随 M7 到来。</p>
+  <p class="note">所有设置即时生效并保存在本地数据库；背景与主题偏好重启后自动恢复。</p>
 </div>
 
 <style>
@@ -762,8 +773,9 @@
   }
 
   h1 {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
     font-weight: 600;
+    letter-spacing: -0.01em;
     margin: 0 0 var(--space-5);
   }
 
@@ -806,9 +818,17 @@
   }
 
   .group h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0 0 var(--space-3);
     font-size: var(--font-size-l);
     font-weight: 600;
+  }
+
+  .group h2 :global(svg) {
+    color: var(--accent);
+    flex-shrink: 0;
   }
 
   .row {
@@ -835,33 +855,34 @@
 
   .segmented {
     display: inline-flex;
+    padding: 2px;
     border: 1px solid var(--border);
     border-radius: var(--radius-m);
+    background: color-mix(in srgb, var(--surface-active) 65%, transparent);
     overflow: hidden;
   }
 
   .segmented button {
     border: none;
-    background: var(--surface);
-    padding: 6px 14px;
+    border-radius: calc(var(--radius-m) - 2px);
+    background: transparent;
+    padding: 5px 14px;
     cursor: pointer;
     color: var(--text-secondary);
     transition: background var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out);
-  }
-
-  .segmented button + button {
-    border-left: 1px solid var(--border);
+      color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
   .segmented button:hover {
-    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .segmented button.active {
-    background: var(--accent-soft);
+    background: var(--surface);
     color: var(--accent);
     font-weight: 600;
+    box-shadow: var(--shadow-sm);
   }
 
   .note {

@@ -56,6 +56,8 @@
 
   const FALLBACK_PRESET: Preset = PRESETS[0]!;
   const preset = $derived(PRESETS.find((p) => p.id === presetId) ?? FALLBACK_PRESET);
+  // Circular progress ring geometry (r=90 on a 200×200 viewBox).
+  const RING_C = 2 * Math.PI * 90;
   // Idle preview of the selected preset; while running the DB session is
   // authoritative (a recovered session may come from another preset).
   const previewPlannedS = $derived(
@@ -298,7 +300,7 @@
   }
 </script>
 
-<div class="page">
+<div class="page page-enter">
   <header class="head">
     <h1>专注</h1>
     <p class="sub">番茄钟 / 自定义 / 正计时。会话写入本地数据库，重启后自动恢复计时。</p>
@@ -318,7 +320,21 @@
         <Coffee size={15} /> 休息中
       {/if}
     </div>
-    <div class="clock" class:over={overS > 0}>{fmt(displayS)}</div>
+    <div class="ring-wrap">
+      <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="track" cx="100" cy="100" r="90" />
+        <circle
+          class="prog"
+          class:rest={phase === "break"}
+          class:over={overS > 0}
+          cx="100"
+          cy="100"
+          r="90"
+          style={`stroke-dashoffset: ${(RING_C * (1 - progress)).toFixed(2)}`}
+        />
+      </svg>
+      <div class="clock" class:over={overS > 0}>{fmt(displayS)}</div>
+    </div>
 
     {#if phase === "focus" && plannedS > 0}
       <div class="progress"><div class="bar" style={`width: ${(progress * 100).toFixed(1)}%`}></div></div>
@@ -483,14 +499,19 @@
     padding: var(--space-5) var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius-l);
-    background: var(--surface);
-    transition: border-color var(--duration-normal) var(--ease-out);
+    background: var(--glass);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--duration-normal) var(--ease-out),
+      box-shadow var(--duration-normal) var(--ease-out);
   }
   .timer-card.is-focus {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
   }
   .timer-card.is-break {
     border-color: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);
   }
 
   .phase-label {
@@ -501,10 +522,51 @@
     font-size: var(--font-size-s);
   }
 
+  .ring-wrap {
+    position: relative;
+    width: 236px;
+    height: 236px;
+    display: grid;
+    place-items: center;
+  }
+
+  .ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .ring circle {
+    fill: none;
+    stroke-width: 7;
+  }
+
+  .ring .track {
+    stroke: var(--surface-active);
+  }
+
+  .ring .prog {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    stroke-dasharray: 565.49;
+    transition: stroke-dashoffset 0.5s var(--ease-out), stroke 0.3s var(--ease-out);
+  }
+
+  .ring .prog.rest {
+    stroke: var(--ok);
+  }
+
+  .ring .prog.over {
+    stroke: var(--warn);
+  }
+
   .clock {
     font-family: var(--font-mono);
-    font-size: 64px;
+    font-size: 46px;
     line-height: 1.1;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
   .clock.over {
@@ -614,11 +676,20 @@
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-primary);
+    transition: background var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
   }
   button.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
+    background: var(--grad-accent);
+    border-color: transparent;
+    color: var(--accent-contrast);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+  }
+  button.primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
   }
   button.ghost:hover,
   button.danger:hover {
@@ -626,6 +697,9 @@
   }
   button.danger {
     color: var(--error);
+  }
+  button.danger:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--error) 40%, transparent);
   }
   button:disabled {
     opacity: 0.55;
@@ -746,16 +820,16 @@
   }
   .track {
     flex: 1;
-    height: 10px;
+    height: 8px;
     border-radius: 999px;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    background: var(--surface-active);
     overflow: hidden;
   }
   .fill {
     display: block;
     height: 100%;
-    background: var(--accent);
+    border-radius: inherit;
+    background: var(--grad-accent);
   }
   .sum-text {
     min-width: 150px;

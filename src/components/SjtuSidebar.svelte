@@ -132,6 +132,7 @@
     padding: var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius-l);
+    box-shadow: var(--shadow-sm);
   }
 
   @media (max-width: 1120px) {
@@ -166,11 +167,14 @@
     background: var(--surface);
     color: var(--text-secondary);
     cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
   }
 
   .icon-btn:hover:not(:disabled) {
-    background: var(--surface-hover);
-    color: var(--text-primary);
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .icon-btn:disabled {
@@ -197,6 +201,7 @@
     border-left: 3px solid var(--warn);
     border-radius: var(--radius-m);
     background: var(--surface);
+    box-shadow: var(--shadow-sm);
   }
 
   .card.running {

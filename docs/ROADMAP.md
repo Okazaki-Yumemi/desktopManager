@@ -125,3 +125,20 @@ iframe, re-arms the sync button on window close, and redesigned the
 month view with titled event chips.
 
 > **Status: delivered and field-verified 2026-09-06 (TESTED/USER_VERIFIED)** — unit-tested mapping/repo (63 tests), real jAccount login → sniffed sync → count=1 landed → sidebar/week view/agenda → auto-close, all verified in the running app with the user. Deferred: 校历周次 display, automatic periodic re-sync, SJTU entries in ICS export.
+
+## M13 — Frontend Visual Polish (added 2026-09-06, user request)
+
+A full-surface visual pass over every page and shared component — no
+backend, schema, or command changes. Extended design tokens (shadow ramp,
+accent gradient, accent-contrast, focus ring); a real global `.glass`
+utility (交大 sidebar and 当日议程 previously had no background);
+iconified sidebar navigation with a gradient brand mark; Fluent-style
+segmented controls in settings; a circular progress ring for the focus
+timer; ambient glows and a gradient clock on 今天; hover lift / selected
+rings on desktop cards and task rows; icon + slide-in toasts; global
+focus-visible states and refined scrollbars; and a week-view restructure
+that adds a labeled time gutter and aligns header/all-day/time rows in one
+grid (fixes column drift when a day has all-day events). Stale onboarding
+copy corrected. v1.1.0.
+
+> **Status: delivered 2026-09-06 (TESTED/WINDOWS_TESTED)** — gates: cargo test 63/63, clippy 0, svelte-check 0/0, eslint 0, vite build ok, release build exit 0. Real-app page-by-page pass (今天/桌面/专注/日历周+月/任务/设置) via occluded-window captures + UIA bounds; user was present and explored the new settings page themselves. Publication of v1.1.0 awaits the user's GitHub auth.
