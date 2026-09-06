@@ -30,10 +30,12 @@
   import {
     applyLayout,
     captureLayout,
+    clearSjtuEvents,
     deleteLayout,
     getAppInfo,
     getShortcutInfo,
     listLayouts,
+    openSjtuSync,
     purgeAppData,
   } from "../services/backend";
   import type { AppInfo, LayoutSummary, ShortcutInfo } from "../types/domain";
@@ -276,6 +278,43 @@
     }
   }
 
+  // --- 上海交大日程（M12） --------------------------------------------------
+
+  let sjtuBusy = $state(false);
+  let sjtuArm = $state(false);
+
+  async function onSjtuSync() {
+    sjtuBusy = true;
+    try {
+      await openSjtuSync();
+      pushToast(
+        "info",
+        "交大日历窗口已打开；若要求登录请在窗口中登录 jAccount，同步完成后会自动关闭。",
+        9000,
+      );
+    } catch (err) {
+      pushToast("error", `无法打开同步窗口：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      sjtuBusy = false;
+    }
+  }
+
+  function armSjtuClear() {
+    if (!sjtuArm) {
+      sjtuArm = true;
+      setTimeout(() => {
+        if (sjtuArm) sjtuArm = false;
+      }, 5000);
+      return;
+    }
+    sjtuArm = false;
+    clearSjtuEvents()
+      .then((n) => pushToast("ok", n > 0 ? `已清除 ${n} 条交大日程` : "交大日程本来就是空的"))
+      .catch((err: unknown) => {
+        pushToast("error", `清除失败：${err instanceof Error ? err.message : String(err)}`);
+      });
+  }
+
   // --- 数据管理（两步确认的破坏性操作） -------------------------------------
 
   let purgeArm = $state<"collections" | "all" | null>(null);
@@ -486,6 +525,30 @@
         </button>
       </div>
     </div>
+  </section>
+
+  <section class="group" aria-label="上海交大日程">
+    <h2>上海交大日程</h2>
+    <div class="row">
+      <div class="row-text">
+        <span class="row-title">课程表同步</span>
+        <span class="row-desc">
+          打开交大日历窗口并登录 jAccount 后，课程与校历自动同步到「日历」页侧边栏。
+          登录凭据只保存在系统 WebView 中，本应用不读取账号密码，数据不上传。
+        </span>
+      </div>
+      <span class="btn-row">
+        <button type="button" class="btn" onclick={() => void onSjtuSync()} disabled={sjtuBusy}>
+          同步
+        </button>
+        <button type="button" class="danger" class:armed={sjtuArm} onclick={() => armSjtuClear()}>
+          {sjtuArm ? "再点一次确认" : "清除"}
+        </button>
+      </span>
+    </div>
+    <p class="row-desc row-gap">
+      同步窗口会打开 my.sjtu.edu.cn 的日历页面；登录一次后凭据留在 WebView，下次同步通常免登录。
+    </p>
   </section>
 
   <section class="group" aria-label="自定义背景">

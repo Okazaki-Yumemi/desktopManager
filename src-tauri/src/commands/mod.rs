@@ -7,4 +7,5 @@ pub mod layout;
 pub mod scene;
 pub mod settings;
 pub mod shortcuts;
+pub mod sjtu;
 pub mod task;

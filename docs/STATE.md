@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-06 (overnight run).
+> Update after every significant work session. Last updated: 2026-09-06 (M12 SJTU integration + v1.0.0 prep).
 
 ## Morning handoff (overnight run 2026-09-05 → 2026-09-06) — READ ME FIRST
 
@@ -82,7 +82,7 @@ icon extraction, event→UI latency, multi-monitor/DPI/sleep-wake drills).
 M0–M2 complete. **M2 — Desktop Index: everything landed and WINDOWS_TESTED**
 (discovery, scanner, index, debounced watcher, open, search, shell icons,
 virtual collections + drag/drop assignment, Chinese UI).
-M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. M6 core **delivered 2026-09-05** (tasks: quick capture Ctrl+N, todo/doing/done cycling, priority/due/notes inline editing, status filters + search; calendar: Monday-start week grid with click-to-create hour slots, all-day + timed events, task linking, day agenda; FocusPage binds a task into the session). Backend is unit-tested; frontend passed svelte-check/eslint plus a degraded browser smoke (structure, empty states, creator prefill) over vite dev without the Tauri backend — in-app visual pass left for the user, so treat both pages as TESTED (not WINDOWS_TESTED/USER_VERIFIED yet). M7 core **delivered 2026-09-05** (appearance presets standard/soft/sharp/OLED-dark, comfortable/compact density, glass strength off/soft/normal/strong, motion standard/reduced/off — all data-attribute + token driven, persisted via the settings table, D20). Calendar month view delivered 2026-09-05 night round (42-cell Monday-first grid, per-day event dots, dimmed out-month cells, click selects the day agenda, dblclick opens the all-day creator, 周/月 toggle persisted as ui.calendarView). Completion chime (WebAudio two-tone, on by default, toggle in a new Settings 通知 section, ui.sound) and a custom accent color picker (inline var overrides + ui.accentCustom, cleared when a preset is chosen) landed 2026-09-06. Desktop icon size (small/medium/large via ui.iconSize → data-icon-size → --desktop-cell/--desktop-icon consumed by the desktop grid) landed 2026-09-06; its live smoke exposed and fixed D21 (Chromium rejects dashed dataset writes — enumPref now uses setAttribute). M8's offline slice **delivered 2026-09-06**: `Database::open_with_recovery` detects a corrupt database (SQLITE_NOTADB from the first pragma, or a `PRAGMA quick_check` answer other than `ok`), renames the db plus stale -wal/-shm siblings to `*.corrupt-<epoch-ms>` (never deletes) and starts fresh (D22, 3 unit tests); a temp-dir scale test drives 500 files + 20 folders through scan → sync → vanish (scan 0 ms, first sync 5 ms; soft-remove converges). M9's autonomous slice **delivered 2026-09-06** (docs/PERFORMANCE.md, MEASURED): scan + DB queries at 0/50/200/500 items are all ≤ 10 ms at the top size even debug-built (500 items: scan 0.54 ms, first sync 9.01 ms, list 0.73 ms, search 0.19 ms; the D22 quick_check keeps startup open at ~2–3 ms) — no optimization justified. ICS export **delivered 2026-09-06** (R18): `calendar_ics.rs` serializes every event to an RFC 5545 VCALENDAR (unit-tested escaping, 75-octet folding that never splits UTF-8 chars, floating local datetimes, exclusive all-day DTEND — D23); `event_export_ics` writes `exports/calendar-<stamp>.ics` under the app data dir and the 日历 page has a 导出 ICS button. Next: pull the remaining deferred features forward (ICS import, layout presets, performance mode) unless the user redirects; then M10/M11 (release build + installer). Deferred: Explorer-restart persistence re-apply; live measurements (startup-to-shell, idle CPU/RAM, icon extraction, event→UI latency) and live adversarial items (multi-monitor, DPI scaling, sleep/wake, logout/login) need the user's session.
+M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-up, DB-backed timer with restart recovery, interruptions + notes, scene binding + soft apply, day list + 7-day summary; live smoke verified, D17). A UX round from direct user feedback **delivered 2026-09-05**: frosted-glass surfaces, collection rename, sub-collections with in-app folder browsing (migration 0008), 今天 welcome page (D18/D19). M4 core delivered (scenes) and M3 core delivered (LVM layout snapshot/restore + canary guard). The user confirmed both outstanding manual tests passed on 2026-09-05 — Explorer drag-into-collection and Settings 布局保存→应用 — so M3 layout restore is now USER_VERIFIED end to end. M6 core **delivered 2026-09-05** (tasks: quick capture Ctrl+N, todo/doing/done cycling, priority/due/notes inline editing, status filters + search; calendar: Monday-start week grid with click-to-create hour slots, all-day + timed events, task linking, day agenda; FocusPage binds a task into the session). Backend is unit-tested; frontend passed svelte-check/eslint plus a degraded browser smoke (structure, empty states, creator prefill) over vite dev without the Tauri backend — in-app visual pass left for the user, so treat both pages as TESTED (not WINDOWS_TESTED/USER_VERIFIED yet). M7 core **delivered 2026-09-05** (appearance presets standard/soft/sharp/OLED-dark, comfortable/compact density, glass strength off/soft/normal/strong, motion standard/reduced/off — all data-attribute + token driven, persisted via the settings table, D20). Calendar month view delivered 2026-09-05 night round (42-cell Monday-first grid, per-day event dots, dimmed out-month cells, click selects the day agenda, dblclick opens the all-day creator, 周/月 toggle persisted as ui.calendarView). Completion chime (WebAudio two-tone, on by default, toggle in a new Settings 通知 section, ui.sound) and a custom accent color picker (inline var overrides + ui.accentCustom, cleared when a preset is chosen) landed 2026-09-06. Desktop icon size (small/medium/large via ui.iconSize → data-icon-size → --desktop-cell/--desktop-icon consumed by the desktop grid) landed 2026-09-06; its live smoke exposed and fixed D21 (Chromium rejects dashed dataset writes — enumPref now uses setAttribute). M8's offline slice **delivered 2026-09-06**: `Database::open_with_recovery` detects a corrupt database (SQLITE_NOTADB from the first pragma, or a `PRAGMA quick_check` answer other than `ok`), renames the db plus stale -wal/-shm siblings to `*.corrupt-<epoch-ms>` (never deletes) and starts fresh (D22, 3 unit tests); a temp-dir scale test drives 500 files + 20 folders through scan → sync → vanish (scan 0 ms, first sync 5 ms; soft-remove converges). M9's autonomous slice **delivered 2026-09-06** (docs/PERFORMANCE.md, MEASURED): scan + DB queries at 0/50/200/500 items are all ≤ 10 ms at the top size even debug-built (500 items: scan 0.54 ms, first sync 9.01 ms, list 0.73 ms, search 0.19 ms; the D22 quick_check keeps startup open at ~2–3 ms) — no optimization justified. ICS export **delivered 2026-09-06** (R18): `calendar_ics.rs` serializes every event to an RFC 5545 VCALENDAR (unit-tested escaping, 75-octet folding that never splits UTF-8 chars, floating local datetimes, exclusive all-day DTEND — D23); `event_export_ics` writes `exports/calendar-<stamp>.ics` under the app data dir and the 日历 page has a 导出 ICS button. M12 **SJTU calendar integration delivered 2026-09-06** (user request): a dedicated 交大日程 sidebar on the calendar page fed by my.sjtu.edu.cn — the sync window opens the portal, the user logs into jAccount there (credentials never touch the app), an injected same-origin script pushes the calendar JSON through one receive-only command (`sjtu_receive`, the only IPC granted to the remote page; the app-wide ACL manifest added for this requires every command to be listed in permissions/allow-app-commands), `sjtu_events` (migration 0009) is replaced atomically per sync, the sidebar shows 正在上课/下一节课 with live countdown, a 10-minute-before reminder (toast + chime) fires while the app runs, and week/month/agenda merge SJTU entries in warning-amber with a 交大 tag (D24). The live jAccount login → sync path is UNVERIFIED until the user logs in once; everything else is unit-tested (63 tests) + degraded-smoke + clean startup. Next: v1.0.0 version bump → release build → zip + GitHub Release (gh CLI needs `gh auth login` first). Deferred: ICS import, layout presets, performance mode, 校历周次 display, periodic auto re-sync. Deferred: Explorer-restart persistence re-apply; live measurements (startup-to-shell, idle CPU/RAM, icon extraction, event→UI latency) and live adversarial items (multi-monitor, DPI scaling, sleep/wake, logout/login) need the user's session.
 
 ## What works (IMPLEMENTED / TESTED / WINDOWS_TESTED)
 
@@ -143,11 +143,13 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## What is broken / unfinished
 
-- NSIS installer bundle (network timeout — retry `corepack pnpm tauri build`).
+- **SJTU sync live path unverified** (needs the user's jAccount): open the
+  交大日程 sidebar → 同步 → log in once in the popped-up window → confirm
+  the countdown card fills. If the endpoint candidates all miss (the portal
+  API is undocumented), capture the network request from the real page and
+  add it to INIT_SCRIPT's CANDIDATES in commands/sjtu.rs.
 - Explorer-restart persistence test — deferred to a dedicated session
   (snapshot before killing explorer).
-- Programmatic auto-arrange/grid detection — canary-move check before batch
-  repositions (M3).
 - Command palette itself is M6; the global shortcut currently toggles the
   window.
 - No CI yet.
@@ -157,10 +159,10 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## Next actions
 
-1. M3: shell integration on the verified LVM route (see
-   docs/WINDOWS_SHELL_PROBE.md + DECISIONS D8), incl. canary auto-arrange
-   detection. Start with layout snapshot/restore wired to collections.
-2. Retry NSIS bundle build.
+1. v1.0.0: bump versions (package.json / tauri.conf.json / Cargo.toml) →
+   `corepack pnpm tauri build` → zip installers → tag v1.0.0 → GitHub
+   Release with notes (`gh auth login` needed before `gh release create`).
+2. User live test of SJTU sync (see "What is broken / unfinished").
 
 ## Known blockers
 
@@ -168,6 +170,20 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-06 (M12 SJTU integration, TESTED): 9 new unit tests — payload
+  mapping (the user's captured sample: 4 personal + 1 school event, exact
+  epoch-millis assertions, external-id shape, all-day heuristic for school
+  day spans), bare-vs-wrapper tolerance, skipped-event counting, invalid
+  JSON error, 2 MB cap, seconds/date time formats; repo replace-all
+  atomicity/idempotency, ordering, clear. cargo test 63/63, clippy 0,
+  svelte-check 0, eslint 0, vite build ok. Degraded browser smoke: calendar
+  page renders the 交大日程 sidebar (empty state + sync button, computed
+  width 264 px / radius 12 px via scoped probe); sidebar + settings 同步
+  buttons fail with graceful toasts in browser mode. Real app launched once
+  with the new ACL manifest: migration 0009 applied, "DesktopManager
+  started", no panics, killed after 7 s. Live jAccount login → sync
+  UNVERIFIED (user session).
 
 - 2026-09-06 (ICS export, TESTED): 6 new unit tests on the serializer
   (RFC specials escaping, fold/unfold round trip incl. CJK chars,

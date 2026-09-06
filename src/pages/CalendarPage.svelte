@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ChevronLeft, ChevronRight, X } from "@lucide/svelte";
+  import SjtuSidebar from "../components/SjtuSidebar.svelte";
   import {
   createEvent,
   deleteEvent,
@@ -12,6 +13,12 @@
 } from "../services/backend";
   import type { CalendarEvent, Task } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
+  import {
+    loadSjtu,
+    sjtuEvents,
+    startSjtuReminder,
+    watchSjtuSynced,
+  } from "../stores/sjtu.svelte";
 
   const DAY_MS = 86_400_000;
   const HOUR_H = 40; // px per hour in the grid
@@ -72,18 +79,72 @@
     return startOfDay(new Date()).getTime() === d.getTime();
   }
 
-  function dayEvents(d: Date): CalendarEvent[] {
+  /**
+   * One renderable entry for a calendar day: local events and the read-only
+   * SJTU projection merged. `kind` drives the color and whether the agenda
+   * offers a delete button.
+   */
+  type DayItem = {
+    key: string;
+    id: number;
+    title: string;
+    startsAt: number;
+    endsAt: number;
+    allDay: boolean;
+    location: string | null;
+    taskId: number | null;
+    kind: "local" | "sjtu";
+  };
+
+  function dayItems(d: Date): DayItem[] {
     const from = d.getTime();
     const to = from + DAY_MS;
-    return events.filter((e) => e.startsAt < to && e.endsAt > from);
-  }
-
-  function timedEvents(d: Date): CalendarEvent[] {
-    return dayEvents(d).filter((e) => !e.allDay);
+    const local = events
+      .filter((e) => e.startsAt < to && e.endsAt > from)
+      .map(
+        (e): DayItem => ({
+          key: `local-${e.id}`,
+          id: e.id,
+          title: e.title,
+          startsAt: e.startsAt,
+          endsAt: e.endsAt,
+          allDay: e.allDay,
+          location: null,
+          taskId: e.taskId,
+          kind: "local",
+        }),
+      );
+    const sjtu = sjtuEvents()
+      .filter((e) => e.startsAt < to && e.endsAt > from)
+      .map(
+        (e): DayItem => ({
+          key: `sjtu-${e.id}`,
+          id: e.id,
+          title: e.title,
+          startsAt: e.startsAt,
+          endsAt: e.endsAt,
+          allDay: e.allDay,
+          location: e.location,
+          taskId: null,
+          kind: "sjtu",
+        }),
+      );
+    // All-day entries first, then by start time.
+    return [...local, ...sjtu].sort((a, b) =>
+      a.allDay === b.allDay ? a.startsAt - b.startsAt : a.allDay ? -1 : 1,
+    );
   }
 
   onMount(() => {
     void restoreView().then(() => reload());
+    void loadSjtu();
+    const stopReminder = startSjtuReminder();
+    let unlisten: (() => void) | undefined;
+    void watchSjtuSynced().then((un) => (unlisten = un));
+    return () => {
+      stopReminder();
+      unlisten?.();
+    };
   });
 
   async function restoreView() {
@@ -198,9 +259,9 @@
     }
   }
 
-  async function remove(event: CalendarEvent) {
+  async function remove(item: DayItem) {
     try {
-      await deleteEvent(event.id);
+      await deleteEvent(item.id);
       await reload();
     } catch (err) {
       pushToast("error", `删除失败：${err instanceof Error ? err.message : String(err)}`);
@@ -224,8 +285,9 @@
   });
 </script>
 
-<div class="calendar">
-  <header class="head">
+<div class="calendar-layout">
+  <div class="calendar">
+    <header class="head">
     <div>
       <h1>日历</h1>
       <p class="muted">{headLabel} · 本地数据，不上传</p>
@@ -314,8 +376,8 @@
 
   <div class="week glass" role="grid" aria-label="周视图">
     {#each days as d, i (d.getTime())}
-      {@const dayTimed = timedEvents(d)}
-      {@const dayAll = dayEvents(d).filter((e) => e.allDay)}
+      {@const dayAll = dayItems(d).filter((e) => e.allDay)}
+      {@const dayTimed = dayItems(d).filter((e) => !e.allDay)}
       <div class="col" class:today={isToday(d)} class:selected={selectedDay.getTime() === d.getTime()}>
         <button
           type="button"
@@ -327,8 +389,14 @@
           <span class="dom" class:mark={isToday(d)}>{d.getDate()}</span>
         </button>
         <div class="allday">
-          {#each dayAll as e (e.id)}
-            <button type="button" class="ev all" title={e.title} onclick={() => (selectedDay = d)}>
+          {#each dayAll as e (e.key)}
+            <button
+              type="button"
+              class="ev all"
+              class:sjtu={e.kind === "sjtu"}
+              title={e.title}
+              onclick={() => (selectedDay = d)}
+            >
               {e.title}
             </button>
           {/each}
@@ -346,7 +414,7 @@
           {#if isToday(d)}
             <div class="now-line" style={`top: ${(nowPct / 100) * 24 * HOUR_H}px`}></div>
           {/if}
-          {#each dayTimed as e (e.id)}
+          {#each dayTimed as e (e.key)}
             {@const s = Math.max(e.startsAt, d.getTime())}
             {@const en = Math.min(e.endsAt, d.getTime() + DAY_MS)}
             {@const top = ((new Date(s).getHours() * 60 + new Date(s).getMinutes()) / 1440) * 24 * HOUR_H}
@@ -354,6 +422,7 @@
             <div
               class="ev timed"
               class:linked={e.taskId !== null}
+              class:sjtu={e.kind === "sjtu"}
               style={`top: ${top}px; height: ${height}px`}
               title={`${timeOf(e.startsAt)}–${timeOf(e.endsAt)} ${e.title}`}
             >
@@ -374,7 +443,7 @@
       </div>
       <div class="month-body">
         {#each monthCells as c (c.getTime())}
-          {@const evs = dayEvents(c)}
+          {@const evs = dayItems(c)}
           <button
             type="button"
             role="gridcell"
@@ -387,8 +456,13 @@
           >
             <span class="num">{c.getDate()}</span>
             <span class="dots">
-              {#each evs.slice(0, 3) as e (e.id)}
-                <span class="dot" class:linked={e.taskId !== null} title={e.title}></span>
+              {#each evs.slice(0, 3) as e (e.key)}
+                <span
+                  class="dot"
+                  class:linked={e.kind === "local" && e.taskId !== null}
+                  class:sjtu={e.kind === "sjtu"}
+                  title={e.title}
+                ></span>
               {/each}
               {#if evs.length > 3}
                 <span class="more">+{evs.length - 3}</span>
@@ -405,35 +479,64 @@
       {selectedDay.getMonth() + 1}月{selectedDay.getDate()}日
       周{WEEKDAYS[(selectedDay.getDay() + 6) % 7]}
     </h2>
-    {#if dayEvents(selectedDay).length === 0}
+    {#if dayItems(selectedDay).length === 0}
       <p class="muted">这一天还没有安排——点击周网格上的任意小时即可新建</p>
     {:else}
       <ul>
-        {#each dayEvents(selectedDay) as e (e.id)}
+        {#each dayItems(selectedDay) as e (e.key)}
           <li>
             <span class="when">
               {e.allDay ? "全天" : `${timeOf(e.startsAt)}–${timeOf(e.endsAt)}`}
             </span>
             <span class="what">
+              {#if e.kind === "sjtu"}
+                <span class="sjtu-tag">交大</span>
+              {/if}
               {e.title}
-              {#if taskTitle(e.taskId)}
+              {#if e.location}
+                <span class="loc">· {e.location}</span>
+              {/if}
+              {#if e.kind === "local" && taskTitle(e.taskId)}
                 <span class="task-ref">· {taskTitle(e.taskId)}</span>
               {/if}
             </span>
-            <button type="button" class="del" title="删除日程" onclick={() => void remove(e)}>
-              <X size={13} />
-            </button>
+            {#if e.kind === "local"}
+              <button type="button" class="del" title="删除日程" onclick={() => void remove(e)}>
+                <X size={13} />
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>
     {/if}
   </section>
+  </div>
+
+  <SjtuSidebar />
 </div>
 
 <style>
+  .calendar-layout {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--space-5);
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
   .calendar {
+    flex: 1;
+    min-width: 0;
     max-width: 960px;
     margin: 0 auto;
+  }
+
+  @media (max-width: 1120px) {
+    .calendar-layout {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 
   .head {
@@ -628,6 +731,32 @@
 
   .ev.linked {
     border-left-color: var(--ok);
+  }
+
+  /* SJTU-synced entries: read-only, warning-amber, tagged in the agenda. */
+  .ev.sjtu {
+    border-left-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 14%, transparent);
+  }
+
+  .dot.sjtu {
+    background: var(--warn);
+  }
+
+  .sjtu-tag {
+    display: inline-block;
+    margin-right: 4px;
+    padding: 0 5px;
+    border-radius: var(--radius-s);
+    background: color-mix(in srgb, var(--warn) 18%, transparent);
+    color: var(--warn);
+    font-size: 11px;
+    vertical-align: 1px;
+  }
+
+  .loc {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-s);
   }
 
   .grid {

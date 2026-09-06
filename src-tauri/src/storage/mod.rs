@@ -6,6 +6,7 @@ pub mod layout_repo;
 pub mod migrations;
 pub mod scenes_repo;
 pub mod settings_repo;
+pub mod sjtu_repo;
 pub mod tasks_repo;
 
 use std::path::{Path, PathBuf};

@@ -1,0 +1,7 @@
+# The ONLY permission granted to the remote university page (window "sjtu",
+# https://my.sjtu.edu.cn): it may push its own calendar JSON into the app.
+# It cannot read anything, list commands, or touch any plugin.
+[[permission]]
+identifier = "allow-sjtu-receive"
+description = "Receive-only: the SJTU calendar page may push one sync payload"
+commands.allow = ["sjtu_receive"]

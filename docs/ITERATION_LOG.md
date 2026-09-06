@@ -1,3 +1,31 @@
+## 2026-09-06 — Round 20: M12 交大日程集成（用户点单）+ v1.0.0 准备
+
+- **架构（D24）**：同步窗口打开 my.sjtu.edu.cn/ui/calendar，用户自己登录
+  jAccount（凭据与 Cookie 只存在于系统 WebView，应用无任何读取路径）；
+  注入脚本同源拉取日历 JSON（候选端点：/ui/api/calendar →
+  /ui/api/event/list → calendar.sjtu.edu.cn/api/event/list，未登录探测
+  +社区教程双线索，全同源优先），经唯一一条只读 IPC 命令 `sjtu_receive`
+  推回。capability `sjtu-remote` 只放行这一条命令给远程页面；为使 ACL
+  生效，新增应用权限清单——**全部 53 条应用命令显式列入
+  allow-app-commands**（新命令必须同步登记，否则前端调用被拒）。
+- **后端**：迁移 0009 `sjtu_events`（外部 ID 唯一、每次同步整表事务替换，
+  不留脏行）；`sjtu.rs` 宽容解析（包装/裸对象、秒/纯日期格式、坏时间跳过
+  计数、2 MB 上限）；`sjtu_list/sjtu_clear/sjtu_open_sync` 命令；同步成功
+  发 `sjtu-synced` 事件并 1.5 s 后自动关同步窗口；主窗口关闭策略改为仅
+  main 隐藏到托盘（辅助窗口正常关）。9 个新单测（含用户提供的完整样例
+  JSON 断言）。cargo test 63/63、clippy 0。
+- **前端**：`sjtu.svelte.ts` store + `SjtuSidebar.svelte`（正在上课/下一节
+  课卡片、30 s 刷新倒计时、今日列表、同步时间/条数、清除按钮）；日历页
+  周/月/日程三视图合并交大条目（amber 色带 + 「交大」标签、无删除钮）；
+  课前 10 分钟提醒（toast + 双音提示音，会话内每条一次）；设置页新增
+  「上海交大日程」分区（同步/两步确认清除）。svelte-check 0、eslint 0、
+  vite build ok。
+- **验证**：降级浏览器冒烟（侧边栏渲染、样式探针 264px/12px、两处同步
+  按钮降级 toast 优雅）；真实应用短启动：迁移 v9 应用成功、ACL 清单
+  无报错、7 s 后正常终止。jAccount 登录→同步的活体链路待用户验证。
+- **下一步**：版本号 1.0.0 → release 构建 → zip → tag + GitHub Release
+  （gh 未登录，需用户 `gh auth login`）。
+
 ## 2026-09-06 — Round 19: M11 冒烟 — release 构建 + 安装包
 
 - `pnpm tauri build` 全绿（vite build → cargo release → 打包，exit 0、

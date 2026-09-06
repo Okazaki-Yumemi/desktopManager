@@ -11,6 +11,9 @@ mod calendar_ics;
 mod commands;
 mod desktop;
 mod storage;
+
+mod sjtu;
+
 #[cfg(test)]
 mod perf_measure;
 
@@ -35,10 +38,13 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                // Resident tool: closing the window hides it to the tray.
-                api.prevent_close();
-                let _ = window.hide();
-                tracing::info!("main window hidden to tray (close requested)");
+                // Resident tool: closing the MAIN window hides it to the tray.
+                // Auxiliary windows (e.g. the SJTU sync webview) close normally.
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    tracing::info!("main window hidden to tray (close requested)");
+                }
             }
         })
         // Serve the stored background image to the webview as
@@ -112,6 +118,10 @@ pub fn run() {
             commands::calendar::event_reschedule,
             commands::calendar::event_delete,
             commands::calendar::event_export_ics,
+            commands::sjtu::sjtu_receive,
+            commands::sjtu::sjtu_list,
+            commands::sjtu::sjtu_clear,
+            commands::sjtu::sjtu_open_sync,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

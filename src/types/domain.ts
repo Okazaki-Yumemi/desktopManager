@@ -149,3 +149,20 @@ export interface CalendarEvent {
   createdAt: number;
   updatedAt: number;
 }
+
+/// One SJTU-synced calendar entry (mirrors storage::sjtu_repo::SjtuEvent).
+/// Read-only projection of the university calendar; every sync replaces it.
+export interface SjtuEvent {
+  id: number;
+  externalId: string;
+  title: string;
+  location: string | null;
+  startsAt: number;
+  endsAt: number;
+  allDay: boolean;
+  status: string | null;
+  recurrence: number | null;
+  source: "personal" | "school";
+  calendarId: string | null;
+  syncedAt: number;
+}

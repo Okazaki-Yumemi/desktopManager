@@ -1,59 +1,46 @@
-# Decisions
 
-ADR-style log. Newest at the bottom. Status: proposed / accepted / superseded.
+## D24 — SJTU sync: webview login + same-origin fetch + receive-only IPC (2026-09-06, M12)
 
-## D1 — Plain Svelte 5 + Vite, not SvelteKit (accepted, 2026-09-05)
-
-create-tauri-app's svelte-ts template now ships SvelteKit. SvelteKit brings
-SSR machinery, routing conventions and adapter layers a desktop shell does not
-need. Plain Svelte 5 + vite-plugin-svelte keeps the bundle tiny, startup fast,
-and matches the planned `pages/components/stores` structure. Runes-style
-stores (`.svelte.ts`) replace a store library.
-
-## D2 — rusqlite (bundled) in Rust, not tauri-plugin-sql (accepted, 2026-09-05)
-
-The charter forbids scattering SQL through UI code. tauri-plugin-sql exposes
-SQL to the JS side, which invites exactly that. rusqlite keeps queries behind
-Rust repositories; the `bundled` feature compiles SQLite so there is no system
-dependency, at the cost of some compile time.
-
-## D3 — tracing + tracing-appender for logging (accepted, 2026-09-05)
-
-Daily rotated files with a 14-day retention sweep at startup satisfy the
-"bounded, privacy-safe, no spam" requirement without a server-grade stack.
-Release default level: info for crates, debug for our lib; debug builds also
-log to stdout.
-
-## D4 — Windows SDK lives on G: via a directory junction (accepted, 2026-09-05)
-
-Machine constraint from the user: developer SDK payloads must not consume C:.
-The standalone SDK installer insists on `C:\Program Files (x86)\Windows
-Kits\10` (registry-visible path that MSVC/rustc tooling discovers). Solution:
-`C:\Program Files (x86)\Windows Kits\10` is a junction to `G:\WindowsSDK\10`,
-so every tool sees the standard path while the bytes live on G:.
-Documented here so a future agent does not "fix" it.
-
-## D5 — Git Bash builds need the MSVC bin dir first in PATH (accepted, 2026-09-05)
-
-MSYS2's GNU `link` shadows MSVC `link.exe`, breaking Rust builds from Git
-Bash. `scripts/winbuild-env.sh` prepends the detected MSVC bin directory.
-Never rely on ambient PATH for Rust builds in this shell.
-
-## D6 — Item identity = absolute path (accepted, 2026-09-05)
-
-Desktop items are identified by their absolute path in `desktop_items` and
-`collection_items`. It is stable across renames of metadata, matches the shell
-world, and keeps the indexer stateless. File identity via inode is not
-portable and unnecessary at this scope.
-
-## D7 — Never hand-write Win32 constants; import from the windows crate (accepted, 2026-09-05)
-
-The shell probe's first write attempt used a hand-computed message constant
-(`LVM_FIRST+15` believed to be `LVM_SETITEMPOSITION32`; it is actually
-`LVM_SETITEMPOSITION`, whose lParam packs coordinates). The remote-memory
-pointer was interpreted as packed coordinates, icons landed at pseudo-random
-positions, and Explorer's off-view icon rescue scrambled the desktop (fully
-recovered from the probe snapshot; see WINDOWS_SHELL_PROBE.md). Rule: every
+- **Login never touches this app.** The sync window is a plain Tauri
+  webview pointed at `https://my.sjtu.edu.cn/ui/calendar/`; the user types
+  jAccount credentials into the university's own page, so the password and
+  the session cookies live only in the WebView2 profile (DPAPI-protected at
+  rest). The app has no code path that reads cookies — no reqwest client
+  carries the session, and nothing is exported.
+- **Data path is page-side fetch → one receive-only command.** An
+  initialization script injected into that window fetches the calendar API
+  *same-origin* (candidates: `/ui/api/calendar`, `/ui/api/event/list`, then
+  `https://calendar.sjtu.edu.cn/api/event/list` — the exact portal endpoint
+  is not publicly documented, so the script tries the same-origin prefixes
+  first and falls back to the calendar service host; the first JSON with
+  `data.events` wins) and pushes the raw JSON body through
+  `sjtu_receive`. Tauri's ACL blocks all IPC from remote origins unless a
+  capability explicitly grants it, so `capabilities/sjtu-remote.json` grants
+  exactly one permission (`allow-sjtu-receive`, one command, payload
+  size-capped at 2 MB, strictly parsed) to window `sjtu` on
+  `https://my.sjtu.edu.cn` — no reads, no plugins, nothing else. Worst case
+  if the university page were compromised: an attacker could write fake
+  calendar rows into this app's local DB. Nothing more.
+- **Consequence felt app-wide: the app now has an ACL manifest.** Defining
+  any `permissions/*.toml` flips Tauri into strict mode — *every*
+  application command must be granted explicitly, even to the main window.
+  `permissions/allow-app-commands/default.toml` lists all 53 commands;
+  adding a new `#[tauri::command]` without adding it there breaks the
+  frontend call with "not allowed by ACL" (loud in dev builds). This also
+  hardens the app: local windows are no longer implicitly trusted for
+  commands either.
+- **Payload semantics.** Either the API wrapper `{status, data}` or a bare
+  `{events, schoolCalendar}` object is accepted; naive "YYYY-MM-DD HH:MM"
+  times are taken as local machine time (same honesty rule as D23); events
+  with unusable times are skipped and counted, never fatal. The whole
+  `sjtu_events` table is replaced per sync in one transaction — re-syncs
+  cannot leave duplicates, and "delete on the university side" propagates
+  by replacement. `recurrence` is stored but not expanded: the app imports
+  exactly the occurrences the API returns.
+- **Reminder is client-side and session-scoped**: a 20 s ticker fires one
+  toast + chime ten minutes before each class while the app is open; after
+  a restart an imminent class may chime once more (safe direction).
+overed from the probe snapshot; see WINDOWS_SHELL_PROBE.md). Rule: every
 Win32 constant, flag and message value comes from the `windows` crate import —
 hand-written hex is a build-blocking review finding.
 

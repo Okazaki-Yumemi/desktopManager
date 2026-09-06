@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type {
   AppInfo,
   CalendarEvent,
@@ -13,6 +14,7 @@ import type {
   Scene,
   SceneLayout,
   ShortcutInfo,
+  SjtuEvent,
   SyncOutcome,
   Task,
   TaskStatus,
@@ -329,4 +331,37 @@ export async function rescheduleEvent(
 
 export async function deleteEvent(id: number): Promise<boolean> {
   return invoke<boolean>("event_delete", { id });
+}
+
+// --- SJTU calendar (M12) ---------------------------------------------------
+
+/** Every SJTU-synced entry, soonest first. */
+export async function listSjtuEvents(): Promise<SjtuEvent[]> {
+  return invoke<SjtuEvent[]>("sjtu_list");
+}
+
+/** Drop the SJTU projection; re-syncing rebuilds it. Returns removed count. */
+export async function clearSjtuEvents(): Promise<number> {
+  return invoke<number>("sjtu_clear");
+}
+
+/**
+ * Open (or refocus) the sync webview on the SJTU portal. The user logs into
+ * jAccount there; the page then pushes its calendar JSON into the backend.
+ */
+export async function openSjtuSync(): Promise<"opened" | "navigated"> {
+  return invoke<"opened" | "navigated">("sjtu_open_sync");
+}
+
+export interface SjtuSyncReport {
+  count: number;
+  skipped: number;
+  syncedAt: number;
+}
+
+/** Fired by the backend after a sync (or clear) landed in the local DB. */
+export async function onSjtuSynced(
+  cb: (report: SjtuSyncReport) => void,
+): Promise<() => void> {
+  return listen<SjtuSyncReport>("sjtu-synced", (e) => cb(e.payload));
 }

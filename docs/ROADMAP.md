@@ -106,3 +106,18 @@ tray UX, settings discoverability. Log findings in ITERATION_LOG.md.
 Fresh install / upgrade / uninstall; DB survives upgrade; no destructive
 desktop behavior; restore layout works; all tests + release build green;
 README complete; NSIS installer generated.
+
+> **Status: release build delivered 2026-09-06** — `pnpm tauri build` green, MSI 2.8 MB + NSIS 2.0 MB. v1.0.0 tagging/publishing follows the SJTU milestone (M12).
+
+## M12 — SJTU Calendar Integration (added 2026-09-06, user request)
+
+Dedicated calendar sidebar fed by 上海交大 交我办 (my.sjtu.edu.cn): in-app
+sync window opens the portal calendar, the user logs into jAccount there
+(credentials never touch this app), an injected same-origin script pushes
+the calendar JSON into one receive-only command; a `sjtu_events` projection
+replaces atomically per sync; the sidebar shows 正在上课/下一节课 with a
+live countdown; a 10-minute-before class reminder (toast + chime) fires
+while the app is open; week/month/agenda merge SJTU entries visually
+(warning-amber, 交大 tag). v1.0.0 release follows.
+
+> **Status: core delivered 2026-09-06 (TESTED)** — unit-tested mapping/repo (63 tests), degraded UI smoke, clean startup with the new ACL manifest. Live jAccount login → sync path is UNVERIFIED until the user logs in once (see DECISIONS D24). Deferred: 校历周次 display, automatic periodic re-sync, SJTU entries in ICS export.
