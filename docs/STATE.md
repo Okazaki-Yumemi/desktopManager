@@ -159,9 +159,9 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## Next actions
 
-1. v1.0.0: bump versions (package.json / tauri.conf.json / Cargo.toml) →
-   `corepack pnpm tauri build` → zip installers → tag v1.0.0 → GitHub
-   Release with notes (`gh auth login` needed before `gh release create`).
+1. Publish the release (needs the user's GitHub auth once): `gh auth login`
+   then
+   `gh release create v1.0.0 --title "DesktopManager v1.0.0" --notes-file _release_notes.md src-tauri/target/release/bundle/msi/DesktopManager_1.0.0_x64_en-US.msi src-tauri/target/release/bundle/nsis/DesktopManager_1.0.0_x64-setup.exe src-tauri/target/release/bundle/DesktopManager_1.0.0_x64.zip`
 2. User live test of SJTU sync (see "What is broken / unfinished").
 
 ## Known blockers

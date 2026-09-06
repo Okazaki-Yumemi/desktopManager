@@ -1,3 +1,15 @@
+## 2026-09-06 — Round 21: v1.0.0 发布
+
+- 版本号三处升级（package.json / tauri.conf.json / Cargo.toml）+ 侧栏页脚
+  v1.0.0 · M12（78d6754）。
+- `corepack pnpm tauri build` exit 0：MSI 3.0 MB、NSIS 2.2 MB、主程序
+  6.0 MB（比 0.1.0 增长来自 SJTU 同步 + ACL 清单）；两安装包压缩为
+  DesktopManager_1.0.0_x64.zip（4.9 MB）。
+- Release 说明 `_release_notes.md`（亮点 / 安装 / jAccount 使用步骤 /
+  诚实声明：同步活体链路未经真实账号验证）。
+- tag v1.0.0 推送；`gh release create` 需要用户先 `gh auth login`
+  （本机无任何 GitHub 凭据），命令已写入 STATE.md 下一步。
+
 ## 2026-09-06 — Round 20: M12 交大日程集成（用户点单）+ v1.0.0 准备
 
 - **架构（D24）**：同步窗口打开 my.sjtu.edu.cn/ui/calendar，用户自己登录
