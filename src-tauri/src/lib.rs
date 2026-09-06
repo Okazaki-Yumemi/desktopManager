@@ -17,7 +17,7 @@ mod sjtu;
 #[cfg(test)]
 mod perf_measure;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 
 pub fn run() {
     tauri::Builder::default()
@@ -44,6 +44,13 @@ pub fn run() {
                     api.prevent_close();
                     let _ = window.hide();
                     tracing::info!("main window hidden to tray (close requested)");
+                }
+            } else if let WindowEvent::Destroyed = event {
+                // The sync window can disappear without a sync (user closes it
+                // before logging in) — tell the frontend so the sync button
+                // re-arms instead of staying disabled forever.
+                if window.label() == "sjtu" {
+                    let _ = window.app_handle().emit("sjtu-window-closed", ());
                 }
             }
         })

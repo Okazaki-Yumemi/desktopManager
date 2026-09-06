@@ -21,51 +21,98 @@ pub const DEFAULT_CALENDAR_URL: &str = "https://my.sjtu.edu.cn/ui/calendar/";
 pub const LAST_SYNC_KEY: &str = "sjtu.lastSyncAt";
 pub const CALENDAR_URL_KEY: &str = "sjtu.calendarUrl";
 
-/// Runs on every page of the sync window. On the portal origin it fetches
-/// the calendar API same-origin (the credentials stay inside the WebView)
-/// and pushes the JSON body through the receive-only command. Candidate
-/// endpoints are tried in order: same-origin prefixes first (no CORS/SameSite
-/// concerns), then the dedicated calendar service host.
+/// Runs on every document of the sync window, top page AND iframes: the
+/// portal embeds the calendar app from calendar.sjtu.edu.cn in a cross-origin
+/// iframe, and its API paths are not stable public contract. So instead of
+/// guessing endpoints we passively hook the page's own fetch/XHR and forward
+/// the first response matching the calendar JSON shape through the
+/// receive-only command. Nothing is requested beyond what the page itself
+/// loads; same-origin candidate fetches remain as a fallback.
 const INIT_SCRIPT: &str = r#"
 (function () {
-  if (location.host !== "my.sjtu.edu.cn") return;
-  var CANDIDATES = [
-    "/ui/api/calendar",
-    "/ui/api/event/list",
-    "https://calendar.sjtu.edu.cn/api/event/list"
-  ];
+  var h = location.host;
+  if (h !== "my.sjtu.edu.cn" && h !== "calendar.sjtu.edu.cn") return;
+  var MAX = 2000000;
+  var pushed = false;
   function looksValid(j) {
     return !!(j && j.data && (Array.isArray(j.data.events) ||
       (j.data.schoolCalendar && Array.isArray(j.data.schoolCalendar.events))));
   }
+  function push(t) {
+    if (pushed || typeof t !== "string" || !t || t.length > MAX) return;
+    if (t.charCodeAt(0) !== 0x7b) return;
+    var j = null;
+    try { j = JSON.parse(t); } catch (e) { return; }
+    if (!looksValid(j)) return;
+    pushed = true;
+    var tauri = window.__TAURI_INTERNALS__;
+    if (tauri && typeof tauri.invoke === "function") {
+      tauri.invoke("sjtu_receive", { payload: t }).catch(function () {});
+    }
+  }
+  if (typeof window.fetch === "function") {
+    var origFetch = window.fetch;
+    window.fetch = function () {
+      var p = origFetch.apply(this, arguments);
+      try {
+        p.then(function (r) {
+          try {
+            if (pushed) return;
+            var ct = "";
+            try { ct = (r.headers && r.headers.get && r.headers.get("content-type")) || ""; } catch (e) {}
+            if (ct && ct.indexOf("json") === -1 && ct.indexOf("text") === -1) return;
+            r.clone().text().then(function (t) { push(t); }).catch(function () {});
+          } catch (e) {}
+        }).catch(function () {});
+      } catch (e) {}
+      return p;
+    };
+  }
+  (function () {
+    var origOpen = XMLHttpRequest.prototype.open;
+    var origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (m, u) {
+      return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      var xhr = this;
+      try {
+        xhr.addEventListener("load", function () {
+          try {
+            if (pushed) return;
+            var t = "";
+            try { t = xhr.responseText || ""; } catch (e) {
+              try {
+                if (xhr.response && typeof xhr.response === "object") t = JSON.stringify(xhr.response);
+              } catch (e2) {}
+            }
+            push(t);
+          } catch (e) {}
+        });
+      } catch (e) {}
+      return origSend.apply(this, arguments);
+    };
+  })();
+  // Same-origin fallback in case the SPA serves cached data and never
+  // refetches this session. Cross-origin attempts are pointless (CORS).
+  var CANDIDATES = h === "my.sjtu.edu.cn"
+    ? ["/ui/api/calendar", "/ui/api/event/list"]
+    : ["/api/event/list"];
   function tryFetch() {
+    if (pushed) return;
     var attempt = 0;
     function next() {
-      if (attempt >= CANDIDATES.length) return;
+      if (pushed || attempt >= CANDIDATES.length) return;
       var url = CANDIDATES[attempt++];
       fetch(url, { credentials: "include", headers: { Accept: "application/json" } })
         .then(function (r) { return r.ok ? r.text() : ""; })
-        .then(function (t) {
-          if (!t || t.length > 2000000) { next(); return; }
-          var j = null;
-          try { j = JSON.parse(t); } catch (e) { j = null; }
-          if (looksValid(j)) {
-            var tauri = window.__TAURI_INTERNALS__;
-            if (tauri && typeof tauri.invoke === "function") {
-              tauri.invoke("sjtu_receive", { payload: t }).catch(function () {});
-            }
-          } else {
-            next();
-          }
-        })
+        .then(function (t) { push(t); if (!pushed) next(); })
         .catch(next);
     }
     next();
   }
-  setTimeout(tryFetch, 1200);
-  // Retry once in case the SPA hydrates slowly; a redundant receive is
-  // harmless (the projection is fully replaced).
-  setTimeout(function () { tryFetch(); }, 6000);
+  setTimeout(tryFetch, 1500);
+  setTimeout(function () { if (!pushed) tryFetch(); }, 7000);
 })();
 "#;
 
@@ -131,8 +178,12 @@ pub fn sjtu_clear(app: AppHandle, state: State<'_, AppState>) -> AppResult<usize
 /// may be overridden via the `sjtu.calendarUrl` setting but must stay on an
 /// sjtu.edu.cn https host — the injected bridge and the capability are
 /// scoped to that domain.
+/// This command MUST stay `async`: window creation from a synchronous
+/// command runs on the main thread and deadlocks WebView2 initialization
+/// on Windows — the window frame appears but never paints (white) and
+/// never becomes interactive.
 #[tauri::command]
-pub fn sjtu_open_sync(app: AppHandle, state: State<'_, AppState>) -> AppResult<String> {
+pub async fn sjtu_open_sync(app: AppHandle, state: State<'_, AppState>) -> AppResult<String> {
     let url = calendar_url(&state)?;
     if let Some(window) = app.get_webview_window("sjtu") {
         let _ = window.show();
@@ -140,10 +191,13 @@ pub fn sjtu_open_sync(app: AppHandle, state: State<'_, AppState>) -> AppResult<S
         window.eval(format!("window.location.assign({url:?});"))?;
         return Ok("navigated".into());
     }
+    tracing::info!(url = %url, "SJTU sync window opening");
     WebviewWindowBuilder::new(&app, "sjtu", WebviewUrl::External(url.clone()))
         .title("交大日程 · 登录 jAccount")
         .inner_size(1080.0, 800.0)
         .min_inner_size(560.0, 500.0)
+        // Never steal foreground focus from whatever the user is doing.
+        .focused(false)
         .initialization_script(INIT_SCRIPT)
         .build()?;
     tracing::info!(url = %url, "SJTU sync window opened");
@@ -152,13 +206,18 @@ pub fn sjtu_open_sync(app: AppHandle, state: State<'_, AppState>) -> AppResult<S
 
 /// Close the sync window once a sync has landed (the toast on the main
 /// window is the user-facing confirmation). Login sessions keep it open.
+/// The close itself must run on the main thread — window teardown from a
+/// background thread races the event loop on Windows.
 fn close_sync_window_after(app: &AppHandle, delay: Duration) {
     let handle = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(delay);
-        if let Some(window) = handle.get_webview_window("sjtu") {
-            let _ = window.close();
-        }
+        let closer = handle.clone();
+        let _ = handle.run_on_main_thread(move || {
+            if let Some(window) = closer.get_webview_window("sjtu") {
+                let _ = window.close();
+            }
+        });
     });
 }
 

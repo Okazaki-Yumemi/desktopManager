@@ -1,3 +1,32 @@
+## 2026-09-06 — Round 22: v1.0.1 修复轮（用户实测反馈）
+
+- **白屏且关不掉的同步窗口（根因：主线程建窗死锁）**：`sjtu_open_sync`
+  是同步命令，在主线程调 `WebviewWindowBuilder::build` 会卡死 WebView2
+  初始化——窗口框出现但永不渲染（全白）、无法交互，且 build 之后的
+  日志永不打印（v1.0.0 日志佐证）。改为 `async fn`（Tauri 官方要求），
+  弹窗 `focused(false)` 不抢前台，自动关窗改走 `run_on_main_thread`。
+  实机验证：窗口正常渲染交我办页面，开窗/关窗/日志行齐全。
+- **同步拿不到数据（根因：日历应用是跨域 iframe）**：交我办把日历嵌在
+  calendar.sjtu.edu.cn 的 iframe 里，同源候选端点 404、跨域候选被 CORS
+  拦。改为被动嗅探：注入脚本挂钩页面自身的 fetch/XHR，第一个形状匹配
+  的日历 JSON 原样经 `sjtu_receive` 推回（端点/参数/鉴权全由页面自己
+  解决）；capability 增加放行 calendar.sjtu.edu.cn。端到端验证：Cookie
+  自动登录 → 嗅探捕获 → count=1 入库 → 侧边栏/周视图/议程显示 →
+  1.5 s 自动关窗。
+- **同步按钮永久禁用**：`syncing` 只在报错或收到报告时复位，用户未
+  登录就关窗口后按钮卡死。后端在 sjtu 窗口 Destroyed 时发
+  `sjtu-window-closed`，前端据此复位。
+- **月视图重构（用户反馈：创建的日程看不见、太丑）**：原实现月视图
+  渲染时周视图永远叠加在上方，日程只有 6 px 小圆点（毛玻璃背景下
+  肉眼不可见——"不显示"的实际原因）。改为周/月互斥显示 + 带标题日程
+  条（时间+标题，交大琥珀/关联绿/本地强调色）+ 今日胶囊 + 选中描边
+  + "还有 N 项"。
+- 门禁：cargo test 63/63、clippy 0、svelte-check 0、eslint 0；产物
+  MSI 3.0 MB / NSIS 2.2 MB / zip 5.0 MB / exe 6.0 MB；
+  `_release_notes.md` 已删除（发布完成清理）。DECISIONS.md 修复了
+  上轮插入 D24 时误吞的标题与 D1–D7（自 a16b955~1 恢复），D24 追加
+  R22 修订说明。
+
 ## 2026-09-06 — Round 21: v1.0.0 发布
 
 - 版本号三处升级（package.json / tauri.conf.json / Cargo.toml）+ 侧栏页脚

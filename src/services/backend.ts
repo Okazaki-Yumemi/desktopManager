@@ -365,3 +365,11 @@ export async function onSjtuSynced(
 ): Promise<() => void> {
   return listen<SjtuSyncReport>("sjtu-synced", (e) => cb(e.payload));
 }
+
+/**
+ * Fired by the backend when the sync window is destroyed — including the
+ * "user closed it without logging in" case, so the sync button can re-arm.
+ */
+export async function onSjtuWindowClosed(cb: () => void): Promise<() => void> {
+  return listen("sjtu-window-closed", () => cb());
+}

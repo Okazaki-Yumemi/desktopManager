@@ -3,6 +3,7 @@ import {
   clearSjtuEvents,
   getSetting,
   listSjtuEvents,
+  onSjtuWindowClosed,
   openSjtuSync,
   onSjtuSynced,
   type SjtuSyncReport,
@@ -90,6 +91,14 @@ export function applySjtuReport(report: SjtuSyncReport): void {
 /** Register the backend listener; returns its unlisten function. */
 export function watchSjtuSynced(): Promise<() => void> {
   return onSjtuSynced(applySjtuReport);
+}
+
+/**
+ * Re-arm the sync button when the sync window goes away without a sync
+ * (the usual case before the user has logged into jAccount).
+ */
+export function watchSjtuWindowClosed(): Promise<() => void> {
+  return onSjtuWindowClosed(() => (syncing = false));
 }
 
 /** The class in progress right now and the next upcoming one. */

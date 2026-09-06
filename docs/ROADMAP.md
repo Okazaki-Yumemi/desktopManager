@@ -118,6 +118,10 @@ the calendar JSON into one receive-only command; a `sjtu_events` projection
 replaces atomically per sync; the sidebar shows 正在上课/下一节课 with a
 live countdown; a 10-minute-before class reminder (toast + chime) fires
 while the app is open; week/month/agenda merge SJTU entries visually
-(warning-amber, 交大 tag). v1.0.0 release follows.
+(warning-amber, 交大 tag). v1.0.0 released; v1.0.1 (2026-09-06) fixed the
+field-reported white sync window (main-thread deadlock → async command),
+switched to passive fetch/XHR sniffing for the cross-origin calendar
+iframe, re-arms the sync button on window close, and redesigned the
+month view with titled event chips.
 
-> **Status: core delivered 2026-09-06 (TESTED)** — unit-tested mapping/repo (63 tests), degraded UI smoke, clean startup with the new ACL manifest. Live jAccount login → sync path is UNVERIFIED until the user logs in once (see DECISIONS D24). Deferred: 校历周次 display, automatic periodic re-sync, SJTU entries in ICS export.
+> **Status: delivered and field-verified 2026-09-06 (TESTED/USER_VERIFIED)** — unit-tested mapping/repo (63 tests), real jAccount login → sniffed sync → count=1 landed → sidebar/week view/agenda → auto-close, all verified in the running app with the user. Deferred: 校历周次 display, automatic periodic re-sync, SJTU entries in ICS export.

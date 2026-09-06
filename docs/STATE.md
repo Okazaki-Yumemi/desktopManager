@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-06 (M12 SJTU integration + v1.0.0 prep).
+> Update after every significant work session. Last updated: 2026-09-06 (v1.0.1 hotfix round — sync window deadlock + sniffing + month view).
 
 ## Morning handoff (overnight run 2026-09-05 → 2026-09-06) — READ ME FIRST
 
@@ -143,11 +143,16 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## What is broken / unfinished
 
-- **SJTU sync live path unverified** (needs the user's jAccount): open the
-  交大日程 sidebar → 同步 → log in once in the popped-up window → confirm
-  the countdown card fills. If the endpoint candidates all miss (the portal
-  API is undocumented), capture the network request from the real page and
-  add it to INIT_SCRIPT's CANDIDATES in commands/sjtu.rs.
+- SJTU sync live path — **resolved 2026-09-06 (R22, field-tested)**: the
+  white uncloseable window was a main-thread WebView2 deadlock (window
+  creation now happens in an async command); the calendar app lives in a
+  cross-origin `calendar.sjtu.edu.cn` iframe, so the init script now
+  passively sniffs the page's own fetch/XHR instead of guessing endpoints
+  (D24 amendment); closing the window without a sync re-arms the button
+  via `sjtu-window-closed`. End-to-end verified with a real jAccount
+  login: count=1 landed, sidebar/week view/agenda filled, auto-close ok.
+  Caveat: each sync stores exactly the occurrences the SPA fetched that
+  session (typically the visible week) — D24's replacement semantics.
 - Explorer-restart persistence test — deferred to a dedicated session
   (snapshot before killing explorer).
 - Command palette itself is M6; the global shortcut currently toggles the
@@ -159,10 +164,16 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## Next actions
 
-1. Publish the release (needs the user's GitHub auth once): `gh auth login`
-   then
-   `gh release create v1.0.0 --title "DesktopManager v1.0.0" --notes-file _release_notes.md src-tauri/target/release/bundle/msi/DesktopManager_1.0.0_x64_en-US.msi src-tauri/target/release/bundle/nsis/DesktopManager_1.0.0_x64-setup.exe src-tauri/target/release/bundle/DesktopManager_1.0.0_x64.zip`
-2. User live test of SJTU sync (see "What is broken / unfinished").
+1. Publish v1.0.1 (needs the user's GitHub auth once): artifacts at
+   `src-tauri/target/release/bundle/{msi,nsis}/` plus
+   `src-tauri/target/release/DesktopManager_1.0.1_x64.zip`
+   (`gh release create v1.0.1 --title "DesktopManager v1.0.1" --notes "…" <files>`).
+2. Fix the v1.0.0 GitHub release: it carries the WRONG MSI
+   (`DesktopManager_0.1.0_x64_en-US.msi` was uploaded instead of the
+   1.0.0 one) — delete that asset, or the whole release, and point
+   downloads at v1.0.1.
+3. User live test of the month-view redesign (event chips) and a real
+   course-table sync (week view inside the sync window refreshes data).
 
 ## Known blockers
 
@@ -170,6 +181,15 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-06 (v1.0.1 hotfix round, TESTED/WINDOWS_TESTED/USER_VERIFIED):
+  cargo test 63/63, clippy 0, svelte-check 0, eslint 0, release build
+  exit 0 (MSI 3.0 MB / NSIS 2.2 MB / zip 5.0 MB / exe 6.0 MB). Real-app
+  verification with the user present: sync window renders the portal
+  (white-screen fixed), user logged into jAccount once, second sync run
+  auto-logged in and landed count=1 (sniffing path), window auto-closed,
+  sidebar/week view/agenda showed the 交大 entry; month view shows
+  titled event chips; sync button re-arms after closing the window.
 
 - 2026-09-06 (M12 SJTU integration, TESTED): 9 new unit tests — payload
   mapping (the user's captured sample: 4 personal + 1 school event, exact

@@ -24,7 +24,7 @@
       </li>
     {/each}
   </ul>
-  <div class="sidebar-footer">v1.0.0 · M12</div>
+  <div class="sidebar-footer">v1.0.1 · M12</div>
 </nav>
 
 <style>

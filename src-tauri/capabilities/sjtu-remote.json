@@ -4,7 +4,7 @@
   "description": "Receive-only bridge for the SJTU calendar sync webview (M12): the university page may push its own calendar JSON via sjtu_receive. No reads, no plugins, no other commands.",
   "windows": ["sjtu"],
   "remote": {
-    "urls": ["https://my.sjtu.edu.cn"]
+    "urls": ["https://my.sjtu.edu.cn", "https://calendar.sjtu.edu.cn"]
   },
   "permissions": ["allow-sjtu-receive"]
 }

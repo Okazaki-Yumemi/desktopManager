@@ -18,6 +18,7 @@
     sjtuEvents,
     startSjtuReminder,
     watchSjtuSynced,
+    watchSjtuWindowClosed,
   } from "../stores/sjtu.svelte";
 
   const DAY_MS = 86_400_000;
@@ -140,10 +141,13 @@
     void loadSjtu();
     const stopReminder = startSjtuReminder();
     let unlisten: (() => void) | undefined;
+    let unlistenClosed: (() => void) | undefined;
     void watchSjtuSynced().then((un) => (unlisten = un));
+    void watchSjtuWindowClosed().then((un) => (unlistenClosed = un));
     return () => {
       stopReminder();
       unlisten?.();
+      unlistenClosed?.();
     };
   });
 
@@ -374,6 +378,7 @@
     </div>
   {/if}
 
+  {#if view === "week"}
   <div class="week glass" role="grid" aria-label="周视图">
     {#each days as d, i (d.getTime())}
       {@const dayAll = dayItems(d).filter((e) => e.allDay)}
@@ -433,6 +438,7 @@
       </div>
     {/each}
   </div>
+  {/if}
 
   {#if view === "month"}
     <div class="month glass" role="grid" aria-label="月视图">
@@ -455,17 +461,22 @@
             ondblclick={() => openCreator(c, null)}
           >
             <span class="num">{c.getDate()}</span>
-            <span class="dots">
+            <span class="chips">
               {#each evs.slice(0, 3) as e (e.key)}
                 <span
-                  class="dot"
+                  class="chip"
                   class:linked={e.kind === "local" && e.taskId !== null}
                   class:sjtu={e.kind === "sjtu"}
-                  title={e.title}
-                ></span>
+                  title={`${e.allDay ? "全天" : timeOf(e.startsAt)} ${e.title}`}
+                >
+                  {#if !e.allDay}
+                    <span class="ct">{timeOf(e.startsAt)}</span>
+                  {/if}
+                  <span class="ct-title">{e.title}</span>
+                </span>
               {/each}
               {#if evs.length > 3}
-                <span class="more">+{evs.length - 3}</span>
+                <span class="more">还有 {evs.length - 3} 项</span>
               {/if}
             </span>
           </button>
@@ -480,7 +491,11 @@
       周{WEEKDAYS[(selectedDay.getDay() + 6) % 7]}
     </h2>
     {#if dayItems(selectedDay).length === 0}
-      <p class="muted">这一天还没有安排——点击周网格上的任意小时即可新建</p>
+      <p class="muted">
+        {view === "week"
+          ? "这一天还没有安排——点击周网格上的任意小时即可新建"
+          : "这一天还没有安排——双击月历上的日期即可新建"}
+      </p>
     {:else}
       <ul>
         {#each dayItems(selectedDay) as e (e.key)}
@@ -739,10 +754,6 @@
     background: color-mix(in srgb, var(--warn) 14%, transparent);
   }
 
-  .dot.sjtu {
-    background: var(--warn);
-  }
-
   .sjtu-tag {
     display: inline-block;
     margin-right: 4px;
@@ -907,7 +918,7 @@
   .month-body {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    grid-auto-rows: minmax(84px, auto);
+    grid-auto-rows: minmax(96px, auto);
   }
 
   .cell {
@@ -937,7 +948,13 @@
   }
 
   .cell.selected {
-    background: var(--accent-soft);
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+
+  .cell.today {
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
   }
 
   .cell.dim .num {
@@ -946,35 +963,80 @@
   }
 
   .cell .num {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 999px;
     font-size: var(--font-size-s);
     font-weight: 600;
     color: var(--text-secondary);
   }
 
   .cell.today .num {
-    color: var(--accent);
-  }
-
-  .dots {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
     background: var(--accent);
+    color: #fff;
   }
 
-  .dot.linked {
-    background: var(--ok);
+  .chips {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 1px 6px 1px 5px;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--text-primary);
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .chip .ct {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+
+  .chip .ct-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chip.sjtu {
+    border-left-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 14%, transparent);
+  }
+
+  .chip.sjtu .ct {
+    color: var(--warn);
+  }
+
+  .chip.linked {
+    border-left-color: var(--ok);
+  }
+
+  .cell.dim .chip {
+    opacity: 0.6;
   }
 
   .more {
     font-size: 11px;
     color: var(--text-tertiary);
+    padding-left: 5px;
   }
 </style>
