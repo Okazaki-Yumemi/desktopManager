@@ -9,6 +9,7 @@
     Keyboard,
     LayoutTemplate,
     Palette,
+    Sun,
     Zap,
   } from "@lucide/svelte";
   import {
@@ -38,6 +39,14 @@
     type ThemePreference,
   } from "../stores/theme.svelte";
   import { isSoundEnabled, setSoundEnabled } from "../lib/chime.svelte";
+  import {
+    CLOCK_STYLES,
+    loadTodayPrefs,
+    setClockStyle,
+    setMottos,
+    todayPrefs,
+    type ClockStyle,
+  } from "../stores/today.svelte";
   import {
     applyLayout,
     captureLayout,
@@ -176,6 +185,29 @@
     }
   }
 
+  // --- 今天页（座右铭 + 时钟风格） -----------------------------------------
+
+  let mottoDraft = $state("");
+
+  function addMotto() {
+    const m = mottoDraft.trim();
+    if (!m) return;
+    if (todayPrefs.mottos.length >= 50) {
+      pushToast("info", "自定义座右铭最多 50 条");
+      return;
+    }
+    mottoDraft = "";
+    void setMottos([...todayPrefs.mottos, m]);
+  }
+
+  function removeMotto(index: number) {
+    void setMottos(todayPrefs.mottos.filter((_, i) => i !== index));
+  }
+
+  function chooseClockStyle(value: ClockStyle) {
+    void setClockStyle(value);
+  }
+
   async function chooseIconSize(value: IconSizePreference) {
     try {
       await iconSizePref.set(value);
@@ -242,6 +274,9 @@
       });
   }
 
+  onMount(() => {
+    void loadTodayPrefs();
+  });
   onMount(refreshLayouts);
 
   async function onSaveLayout() {
@@ -506,6 +541,67 @@
         {/each}
       </div>
     </div>
+  </section>
+
+  <section class="group" aria-label="今天页">
+    <h2><Sun size={16} aria-hidden="true" /> 今天页</h2>
+    <div class="row">
+      <div class="row-text">
+        <span class="row-title">时钟风格</span>
+        <span class="row-desc">首页大时钟的样式；切换后立即生效。</span>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="时钟风格">
+        {#each CLOCK_STYLES as st (st.value)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={todayPrefs.clockStyle === st.value}
+            class:active={todayPrefs.clockStyle === st.value}
+            onclick={() => chooseClockStyle(st.value)}
+          >
+            {st.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="row row-gap">
+      <div class="row-text">
+        <span class="row-title">自定义座右铭</span>
+        <span class="row-desc">
+          留空则每天从内置句子轮换；添加后每天从你的句子里轮换（最多 50 条）。
+        </span>
+      </div>
+      <span class="btn-row">
+        <input
+          class="motto-input"
+          placeholder="写一句给自己…"
+          bind:value={mottoDraft}
+          maxlength="60"
+          onkeydown={(e) => {
+            if (e.key === "Enter") addMotto();
+          }}
+        />
+        <button type="button" class="btn" onclick={addMotto}>添加</button>
+      </span>
+    </div>
+    {#if todayPrefs.mottos.length > 0}
+      <div class="motto-list row-gap">
+        {#each todayPrefs.mottos as m, i (`${i}-${m}`)}
+          <span class="motto-chip">
+            <span class="motto-text">{m}</span>
+            <button
+              type="button"
+              class="chip-del"
+              title="删除这句"
+              aria-label="删除座右铭：{m}"
+              onclick={() => removeMotto(i)}
+            >
+              ×
+            </button>
+          </span>
+        {/each}
+      </div>
+    {/if}
   </section>
 
   <section class="group" aria-label="通知">
@@ -1004,6 +1100,59 @@
   input[type="range"] {
     width: 180px;
     accent-color: var(--accent);
+  }
+
+  .motto-input {
+    width: 200px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    color: var(--text-primary);
+  }
+
+  .motto-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .motto-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px 3px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--glass);
+    font-size: var(--font-size-s);
+    color: var(--text-secondary);
+    max-width: 100%;
+  }
+
+  .motto-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .motto-chip .chip-del {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 999px;
+    background: var(--surface-hover);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .motto-chip .chip-del:hover {
+    color: var(--error);
   }
 
   .layout-name {
