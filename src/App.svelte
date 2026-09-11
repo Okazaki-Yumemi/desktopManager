@@ -2,13 +2,15 @@
   import { onMount } from "svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import CommandPalette from "./components/CommandPalette.svelte";
   import TodayPage from "./pages/TodayPage.svelte";
   import DesktopPage from "./pages/DesktopPage.svelte";
   import FocusPage from "./pages/FocusPage.svelte";
   import CalendarPage from "./pages/CalendarPage.svelte";
   import TasksPage from "./pages/TasksPage.svelte";
   import SettingsPage from "./pages/SettingsPage.svelte";
-  import { currentPage } from "./stores/router.svelte";
+  import { currentPage, navigate, PAGES, type PageId } from "./stores/router.svelte";
+  import { palette, togglePalette } from "./stores/palette.svelte";
   import {
     densityPref,
     glassPref,
@@ -25,7 +27,36 @@
 
   const page = $derived(currentPage());
 
+  /** True when a keyboard shortcut should NOT fire (user is typing). */
+  function isTypingTarget(e: KeyboardEvent): boolean {
+    const t = e.target;
+    return (
+      t instanceof HTMLElement &&
+      (t.tagName === "INPUT" ||
+        t.tagName === "TEXTAREA" ||
+        t.tagName === "SELECT" ||
+        t.isContentEditable)
+    );
+  }
+
+  function onGlobalKeydown(e: KeyboardEvent): void {
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      togglePalette();
+      return;
+    }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && !isTypingTarget(e)) {
+      // Ctrl+1..6 jump to the Nth page.
+      const n = Number(e.key);
+      if (n >= 1 && n <= PAGES.length) {
+        e.preventDefault();
+        navigate(PAGES[n - 1]!.id as PageId);
+      }
+    }
+  }
+
   onMount(() => {
+    window.addEventListener("keydown", onGlobalKeydown);
     void loadThemePreference();
     void loadAccentPreference();
     void surfacePref.load();
@@ -39,6 +70,7 @@
     const stopWallpaperRotation = startWallpaperRotation();
     const unlistenTheme = watchSystemTheme();
     return () => {
+      window.removeEventListener("keydown", onGlobalKeydown);
       unlistenTheme();
       stopWallpaperRotation();
     };
@@ -70,6 +102,9 @@
     {/if}
   </main>
   <Toasts />
+  {#if palette.open}
+    <CommandPalette />
+  {/if}
 </div>
 
 <style>

@@ -182,11 +182,37 @@
     });
     void loadSjtu();
     const stopReminder = startSjtuReminder();
+    // Keyboard: ←/→ moves a week or a month, T jumps back to today —
+    // never while the user is typing in a field.
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.tagName === "SELECT" ||
+          t.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        shiftBack();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        shiftForward();
+      } else if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        goToday();
+      }
+    };
+    window.addEventListener("keydown", onKey);
     let unlisten: (() => void) | undefined;
     let unlistenClosed: (() => void) | undefined;
     void watchSjtuSynced().then((un) => (unlisten = un));
     void watchSjtuWindowClosed().then((un) => (unlistenClosed = un));
     return () => {
+      window.removeEventListener("keydown", onKey);
       stopReminder();
       unlisten?.();
       unlistenClosed?.();

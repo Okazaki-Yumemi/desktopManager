@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-06 (v1.1.0 — full frontend visual polish, M13).
+> Update after every significant work session. Last updated: 2026-09-12 (v1.2.0 — personalization, wallpaper library, palette, calendar redo; M14).
 
 ## Morning handoff (overnight run 2026-09-05 → 2026-09-06) — READ ME FIRST
 
@@ -164,14 +164,15 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## Next actions
 
-1. Publish v1.1.0 (needs the user's GitHub auth once): artifacts at
-   `src-tauri/target/release/bundle/{msi,nsis}/` plus
-   `src-tauri/target/release/DesktopManager_1.1.0_x64.zip`.
+1. Publish v1.1.0 + v1.2.0 (needs the user's GitHub auth once): artifacts at
+   `src-tauri/target/release/bundle/{msi,nsis}/` plus the matching
+   `DesktopManager_1.x.0_x64.zip` files in `src-tauri/target/release/`.
 2. Fix the v1.0.0 GitHub release: it carries the WRONG MSI
    (`DesktopManager_0.1.0_x64_en-US.msi`) — delete that asset or the
    release; point downloads at the newest tag.
-3. User field test of the new look (dark/light, density, wallpaper) —
-   week view now has a time gutter; report anything hard to read.
+3. User field test of v1.2.0: mottos/clock styles, wallpaper auto-switch
+   (note: applying a library image overwrites the previous background —
+   re-add your preferred art once), calendar drag-create/editing.
 
 ## Known blockers
 
@@ -179,6 +180,18 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-12 (v1.2.0 feature round R24–R27, TESTED/WINDOWS_TESTED):
+  svelte-check 0/0, eslint 0, cargo test 64/64 (new lib-name validator
+  tests; the first validator draft rejected every valid name and the unit
+  test caught it), clippy 0, release build exit 0 (MSI 3.2 MB / NSIS
+  2.3 MB / zip 5.2 MB / exe 6.3 MB). Real-app: Ctrl+K palette
+  open/filter/execute, today stats cards, clock-style + motto settings,
+  wallpaper library thumbnails served over the new protocol route, click-
+  to-apply switches the background live, auto-switch segmented renders;
+  calendar drag-create had already been exercised by the user overnight
+  (a batch of MCM hour-span events), auto-scroll + all-day row + editing
+  panel verified.
 
 - 2026-09-06 (v1.1.0 frontend polish, TESTED/WINDOWS_TESTED): svelte-check
   0/0, eslint 0, vite build ok, cargo test 63/63, clippy 0, release build

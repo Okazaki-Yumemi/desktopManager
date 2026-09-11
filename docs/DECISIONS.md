@@ -365,3 +365,35 @@ polish), and what they produced:
   said 任务/日历 "will arrive with M6" and the footer note promised M7
   features that shipped long ago; both rewritten to describe current
   behavior.
+
+## D26 — Personalization stays local and degrades honestly (2026-09-12, R24/R25/R27)
+
+- Custom mottos, clock style, wallpaper library, auto-switch mode and the
+  Ctrl+K palette are all frontend/settings-table features; no backend data
+  model changed except the wallpaper library files. Preference writes that
+  fail (degraded mode) keep the in-session value and try again next time —
+  cosmetic preferences never block the app.
+- Wallpaper auto-switch semantics are stated in the UI and are honest:
+  interval modes tick only while the app runs; 「启动时/每天」 fire at most
+  once per calendar day (date-keyed in settings, survives restarts);
+  rotation needs ≥ 2 library images and silently does nothing otherwise.
+- The library stores immutable copies (`wallpapers/<millis>.img`); applying
+  one copies it over the single serving file `background.img` — by design
+  the previous background is therefore overwritten (single-slot serving),
+  which is acceptable because the library entry itself is never mutated.
+  Names are validated as digits-only stems, and the `bg://library/` route
+  reuses the same validator (path-traversal safe).
+
+## D27 — Calendar redo optimizes for operation first (2026-09-07, R26)
+
+The user judged the old calendar hard to read and hard to operate and asked
+for a UI-level redo. Choices: drag-to-create on the week grid (press, span
+hours, release → prefilled form) instead of per-hour buttons; the bottom
+agenda became a persistent day panel (right column, stacks on narrow
+windows) that owns creation, editing and deletion — `event_update` reached
+the frontend for the first time; event blocks show their start time once
+tall enough and stay in sync (highlight) with the panel selection; opening
+the page scrolls to the current hour minus two. The week time-grid uses
+pointer events on one div rather than 168 buttons (keyboard access is
+carried by the focusable event blocks and the panel); SJTU entries remain
+read-only everywhere.

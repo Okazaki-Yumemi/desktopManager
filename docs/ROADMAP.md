@@ -142,3 +142,16 @@ grid (fixes column drift when a day has all-day events). Stale onboarding
 copy corrected. v1.1.0.
 
 > **Status: delivered 2026-09-06 (TESTED/WINDOWS_TESTED)** — gates: cargo test 63/63, clippy 0, svelte-check 0/0, eslint 0, vite build ok, release build exit 0. Real-app page-by-page pass (今天/桌面/专注/日历周+月/任务/设置) via occluded-window captures + UIA bounds; user was present and explored the new settings page themselves. Publication of v1.1.0 awaits the user's GitHub auth.
+
+## M14 — Personalization & Command Palette (added 2026-09-07, user request)
+
+User-directed functionality round: custom homepage mottos, four clock
+styles (classic gradient / minimal / split-flap / digit tiles), a
+quick-glance stats strip, a multi-image wallpaper library with automatic
+switching (startup/30m/1h/6h/daily, sequential or random), a Ctrl+K
+command palette, and calendar keyboard navigation. Delivered together
+with the calendar UI redo (drag-to-create, full event editing, day
+panel). No server, no telemetry — every new artifact stays in the local
+app-data directory. v1.2.0.
+
+> **Status: delivered and WINDOWS_TESTED 2026-09-12** — see ITERATION_LOG R24–R27 and DECISIONS D26/D27.

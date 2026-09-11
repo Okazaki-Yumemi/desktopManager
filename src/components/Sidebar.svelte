@@ -8,6 +8,7 @@
     Timer,
   } from "@lucide/svelte";
   import { PAGES, currentPage, navigate, type PageId } from "../stores/router.svelte";
+  import { togglePalette } from "../stores/palette.svelte";
 
   const active = $derived(currentPage());
 
@@ -50,7 +51,11 @@
       </li>
     {/each}
   </ul>
-  <div class="sidebar-footer">v1.1.0 · M13</div>
+  <button type="button" class="palette-btn" onclick={() => togglePalette()}>
+    <span>快速操作</span>
+    <kbd>Ctrl K</kbd>
+  </button>
+  <div class="sidebar-footer">v1.2.0 · M14</div>
 </nav>
 
 <style>
@@ -137,8 +142,40 @@
     color: var(--accent);
   }
 
-  .sidebar-footer {
+  .palette-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
     margin-top: auto;
+    padding: 7px var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-s);
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .palette-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .palette-btn kbd {
+    padding: 1px 6px;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-s);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .sidebar-footer {
     padding: var(--space-2);
     border-top: 1px solid var(--border);
     font-size: var(--font-size-s);
