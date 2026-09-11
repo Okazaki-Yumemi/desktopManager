@@ -21,7 +21,7 @@
     watchSystemTheme,
   } from "./stores/theme.svelte";
   import { loadSoundPreference } from "./lib/chime.svelte";
-  import { initWallpaper, wallpaper } from "./stores/wallpaper.svelte";
+  import { initWallpaper, startWallpaperRotation, wallpaper } from "./stores/wallpaper.svelte";
 
   const page = $derived(currentPage());
 
@@ -36,7 +36,12 @@
     void loadCustomAccent();
     void iconSizePref.load();
     void initWallpaper();
-    return watchSystemTheme();
+    const stopWallpaperRotation = startWallpaperRotation();
+    const unlistenTheme = watchSystemTheme();
+    return () => {
+      unlistenTheme();
+      stopWallpaperRotation();
+    };
   });
 </script>
 

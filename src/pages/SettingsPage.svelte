@@ -61,10 +61,20 @@
   import type { AppInfo, LayoutSummary, ShortcutInfo } from "../types/domain";
   import { pushToast } from "../stores/toast.svelte";
   import {
+    applyWallpaper,
+    AUTO_MODES,
+    addWallpaper,
     clearWallpaper,
+    loadWallpaperLibrary,
+    removeWallpaper,
+    rotateWallpaper,
+    setWallpaperAutoMode,
+    setWallpaperAutoOrder,
     setWallpaperOpacity,
-    uploadWallpaper,
     wallpaper,
+    wallpaperLib,
+    type WallpaperAutoMode,
+    type WallpaperAutoOrder,
   } from "../stores/wallpaper.svelte";
 
   const options: ReadonlyArray<{ value: ThemePreference; label: string }> = [
@@ -216,25 +226,64 @@
     }
   }
 
-  // --- 自定义背景 ---------------------------------------------------------
+  // --- 自定义背景（壁纸库 + 自动切换） --------------------------------------
 
   let bgBusy = $state(false);
   let fileInput = $state<HTMLInputElement | undefined>(undefined);
 
-  async function onPickImage(e: Event) {
+  function thumbUrl(name: string): string {
+    return `http://bg.localhost/library/${name}?v=${name}`;
+  }
+
+  async function onPickImages(e: Event) {
     const input = e.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
+    const files = Array.from(input.files ?? []);
     input.value = "";
-    if (!file) return;
+    if (files.length === 0) return;
     bgBusy = true;
-    try {
-      await uploadWallpaper(file);
-      pushToast("ok", "背景已更新");
-    } catch (err) {
-      pushToast("error", `设置背景失败：${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      bgBusy = false;
+    let added = 0;
+    for (const file of files) {
+      try {
+        await addWallpaper(file);
+        added += 1;
+      } catch (err) {
+        pushToast("error", `添加失败：${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+    bgBusy = false;
+    if (added > 0) pushToast("ok", added > 1 ? `已添加 ${added} 张壁纸` : "壁纸已更新");
+  }
+
+  async function onApplyWallpaper(name: string) {
+    try {
+      await applyWallpaper(name);
+    } catch (err) {
+      pushToast("error", `应用失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function onRemoveWallpaper(name: string) {
+    try {
+      await removeWallpaper(name);
+    } catch (err) {
+      pushToast("error", `删除失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function onRotateNow() {
+    if (await rotateWallpaper()) {
+      pushToast("ok", "已换一张");
+    } else {
+      pushToast("info", "库里至少要有两张壁纸才能轮换");
+    }
+  }
+
+  function chooseAutoMode(mode: WallpaperAutoMode) {
+    void setWallpaperAutoMode(mode);
+  }
+
+  function chooseAutoOrder(order: WallpaperAutoOrder) {
+    void setWallpaperAutoOrder(order);
   }
 
   function onOpacityInput(e: Event) {
@@ -276,6 +325,7 @@
 
   onMount(() => {
     void loadTodayPrefs();
+    void loadWallpaperLibrary();
   });
   onMount(refreshLayouts);
 
@@ -662,25 +712,99 @@
     <h2><ImageIcon size={16} aria-hidden="true" /> 自定义背景</h2>
     <div class="row">
       <div class="row-text">
-        <span class="row-title">背景图片</span>
-        <span class="row-desc">保存在本机应用数据目录，不会上传或分享。</span>
+        <span class="row-title">壁纸库</span>
+        <span class="row-desc">可一次选多张；图片保存在本机应用数据目录，不会上传或分享。</span>
       </div>
       <span class="btn-row">
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp"
+          multiple
           hidden
           bind:this={fileInput}
-          onchange={onPickImage}
+          onchange={onPickImages}
         />
         <button type="button" class="btn" onclick={() => fileInput?.click()} disabled={bgBusy}>
-          选择图片…
+          添加图片…
         </button>
+        {#if wallpaperLib.names.length >= 2}
+          <button type="button" class="btn" onclick={() => void onRotateNow()}>换一张</button>
+        {/if}
         {#if wallpaper.active}
-          <button type="button" class="btn" onclick={() => void onClearWallpaper()}>清除</button>
+          <button type="button" class="btn" onclick={() => void onClearWallpaper()}>清除背景</button>
         {/if}
       </span>
     </div>
+    {#if wallpaperLib.names.length > 0}
+      <div class="wall-grid row-gap" role="listbox" aria-label="壁纸库">
+        {#each wallpaperLib.names as name (name)}
+          <div class="wall-item" class:current={name === wallpaperLib.current}>
+            <button
+              type="button"
+              class="wall-thumb"
+              role="option"
+              aria-selected={name === wallpaperLib.current}
+              title="使用这张壁纸"
+              onclick={() => void onApplyWallpaper(name)}
+            >
+              <img src={thumbUrl(name)} alt="壁纸预览" loading="lazy" />
+            </button>
+            <button
+              type="button"
+              class="wall-del"
+              title="从壁纸库删除"
+              aria-label="删除这张壁纸"
+              onclick={() => void onRemoveWallpaper(name)}
+            >
+              ×
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    {#if wallpaperLib.names.length >= 2}
+      <div class="row row-gap">
+        <div class="row-text">
+          <span class="row-title">自动切换</span>
+          <span class="row-desc">按间隔自动换一张；「启动时/每天」每天最多换一次。</span>
+        </div>
+        <span class="btn-row">
+          <div class="segmented" role="radiogroup" aria-label="自动切换间隔">
+            {#each AUTO_MODES as m (m.value)}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={wallpaperLib.autoMode === m.value}
+                class:active={wallpaperLib.autoMode === m.value}
+                onclick={() => chooseAutoMode(m.value)}
+              >
+                {m.label}
+              </button>
+            {/each}
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="切换顺序">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={wallpaperLib.autoOrder === "seq"}
+              class:active={wallpaperLib.autoOrder === "seq"}
+              onclick={() => chooseAutoOrder("seq")}
+            >
+              顺序
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={wallpaperLib.autoOrder === "rand"}
+              class:active={wallpaperLib.autoOrder === "rand"}
+              onclick={() => chooseAutoOrder("rand")}
+            >
+              随机
+            </button>
+          </div>
+        </span>
+      </div>
+    {/if}
     {#if wallpaper.active}
       <div class="row row-gap">
         <div class="row-text">
@@ -1100,6 +1224,78 @@
   input[type="range"] {
     width: 180px;
     accent-color: var(--accent);
+  }
+
+  .wall-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .wall-item {
+    position: relative;
+    border-radius: var(--radius-m);
+  }
+
+  .wall-thumb {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-m);
+    background: var(--surface);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .wall-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .wall-thumb:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .wall-item.current .wall-thumb {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+
+  .wall-del {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .wall-item:hover .wall-del,
+  .wall-del:focus-visible {
+    opacity: 1;
+  }
+
+  .wall-del:hover {
+    color: var(--error);
   }
 
   .motto-input {

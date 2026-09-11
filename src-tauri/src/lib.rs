@@ -56,7 +56,7 @@ pub fn run() {
         })
         // Serve the stored background image to the webview as
         // http://bg.localhost/background.img (Windows maps `bg` there).
-        .register_uri_scheme_protocol("bg", |ctx, _request| {
+        .register_uri_scheme_protocol("bg", |ctx, request| {
             let not_found = || {
                 tauri::http::Response::builder()
                     .status(404)
@@ -64,7 +64,18 @@ pub fn run() {
                     .expect("static response")
             };
             let state = ctx.app_handle().state::<app::state::AppState>();
-            let file = state.data_dir.join("background.img");
+            // Routes: /background.img (current wallpaper) and
+            // /library/<millis>.img (settings-page thumbnails).
+            let path = request.uri().path();
+            let file = match path.strip_prefix("/library/") {
+                Some(name) => {
+                    if !commands::background::valid_lib_name(name) {
+                        return not_found();
+                    }
+                    state.data_dir.join("wallpapers").join(name)
+                }
+                None => state.data_dir.join("background.img"),
+            };
             let Ok(bytes) = std::fs::read(&file) else {
                 return not_found();
             };
@@ -97,6 +108,10 @@ pub fn run() {
             commands::background::background_set,
             commands::background::background_clear,
             commands::background::appdata_purge,
+            commands::background::background_library_add,
+            commands::background::background_library_list,
+            commands::background::background_apply,
+            commands::background::background_library_remove,
             commands::layout::layout_capture,
             commands::layout::layout_list,
             commands::layout::layout_apply,

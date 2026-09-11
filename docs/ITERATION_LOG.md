@@ -1,3 +1,22 @@
+## 2026-09-07 — Round 25: 壁纸库 + 自动切换（用户点单③）
+
+- **后端**（background.rs +4 命令，全部登记 ACL）：`background_library_add`
+  （存入 `wallpapers/<millis>.img`，15MB 上限，不动当前背景）、
+  `background_library_list`、`background_apply`（拷贝覆盖 background.img，
+  库文件永不改动）、`background_library_remove`；`valid_lib_name` 只接受
+  纯数字词干 `.img`（防路径穿越，含 2 个单测；首轮实现把 `.img` 字母也
+  拒了导致全部失效——单测当场抓住）。`bg://` 协议新增 `/library/<name>`
+  路由供设置页缩略图，同一校验函数复用；`background_set` 重构共用
+  decode/ensure-setting 助手。cargo test 64/64、clippy 0。
+- **前端**：wallpaper store 增加 `wallpaperLib`（names/current/autoMode/
+  autoOrder，`ui.wallpaperCurrent`、`ui.wallpaperAuto` 持久化）；多选
+  添加即入库并应用；缩略图网格（点击应用、悬停删除、当前项高亮环）；
+  自动切换六档（关闭/启动时/30 分钟/1 小时/6 小时/每天）+ 顺序/随机，
+  「换一张」手动立即轮换；轮换器 30s tick 按当前模式判断到期（改档
+  免重启），启动/每天档按日期键控（`ui.wallpaperLastSwitch`）跨重启
+  去重；库内不足 2 张不轮换（诚实降级）。svelte-check 0/0、eslint 0、
+  vite build ok。
+
 ## 2026-09-07 — Round 24: 今天页个性化（用户点单①②）
 
 - **自定义座右铭**：`ui.mottos`（string[]，≤50 条）；设置页新增

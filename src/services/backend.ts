@@ -345,6 +345,24 @@ export async function clearSjtuEvents(): Promise<number> {
   return invoke<number>("sjtu_clear");
 }
 
+// --- Wallpaper library + auto-switch (M14) --------------------------------
+
+export async function backgroundLibraryAdd(dataB64: string, mime: string): Promise<string> {
+  return invoke<string>("background_library_add", { dataB64, mime });
+}
+
+export async function backgroundLibraryList(): Promise<string[]> {
+  return invoke<string[]>("background_library_list");
+}
+
+export async function backgroundApply(name: string): Promise<void> {
+  await invoke("background_apply", { name });
+}
+
+export async function backgroundLibraryRemove(name: string): Promise<void> {
+  await invoke("background_library_remove", { name });
+}
+
 /**
  * Open (or refocus) the sync webview on the SJTU portal. The user logs into
  * jAccount there; the page then pushes its calendar JSON into the backend.
