@@ -1,8 +1,10 @@
 //! SJTU-synced calendar entries (migration 0009). The table is a read-only
-//! projection of the university calendar service: every sync REPLACES all
-//! rows in one transaction, so a re-sync can never leave stale rows behind.
-//! Editing happens on the university side, not here — this repo has no
-//! update/delete-per-row API on purpose.
+//! projection of the university calendar service. Since D29 a sync session
+//! pushes one payload per week (the portal hands out a week at a time), so
+//! receives MERGE by external_id instead of replacing the table; rows that
+//! ended more than two days ago are pruned with each merge so the projection
+//! cannot grow unboundedly across a term. Editing happens on the university
+//! side, not here.
 
 use rusqlite::params;
 use serde::Serialize;
@@ -58,17 +60,34 @@ impl<'a> SjtuRepo<'a> {
         })
     }
 
-    /// Replace the whole projection with `events` atomically. Users see
-    /// either the previous or the new state, never a half-written sync.
-    pub fn replace_all(&self, events: &[SjtuEvent]) -> AppResult<usize> {
+    /// Merge one pushed payload into the projection atomically: new external
+    /// ids are inserted, known ones updated in place. Rows that ended more
+    /// than seven days before `now_ms` are pruned in the same transaction —
+    /// the last week stays viewable in the calendar (the whole point of the
+    /// Sunday sync is next week, but looking back one week is normal), while
+    /// a term of weekly pushes stays bounded. Users see either the previous
+    /// or the new state, never a half sync.
+    pub fn upsert_events(&self, events: &[SjtuEvent], now_ms: i64) -> AppResult<usize> {
+        const DAY_MS: i64 = 86_400_000;
+        const RETAIN_PAST_DAYS: i64 = 7;
         let tx = self.conn.unchecked_transaction()?;
-        tx.execute("DELETE FROM sjtu_events", [])?;
         {
             let mut stmt = tx.prepare(
                 "INSERT INTO sjtu_events (external_id, title, location, starts_at, ends_at,
                                            all_day, status, recurrence, source, calendar_id,
                                            synced_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                 ON CONFLICT(external_id) DO UPDATE SET
+                   title = excluded.title,
+                   location = excluded.location,
+                   starts_at = excluded.starts_at,
+                   ends_at = excluded.ends_at,
+                   all_day = excluded.all_day,
+                   status = excluded.status,
+                   recurrence = excluded.recurrence,
+                   source = excluded.source,
+                   calendar_id = excluded.calendar_id,
+                   synced_at = excluded.synced_at",
             )?;
             for e in events {
                 stmt.execute(params![
@@ -86,6 +105,10 @@ impl<'a> SjtuRepo<'a> {
                 ])?;
             }
         }
+        tx.execute(
+            "DELETE FROM sjtu_events WHERE ends_at < ?1",
+            [now_ms - RETAIN_PAST_DAYS * DAY_MS],
+        )?;
         tx.commit()?;
         Ok(events.len())
     }
@@ -135,38 +158,68 @@ mod tests {
     }
 
     #[test]
-    fn replace_all_is_atomic_and_repeatable() {
+    fn upsert_merges_weeks_updates_and_prunes() {
+        const DAY: i64 = 86_400_000;
         let mut db = Database::open_in_memory().unwrap();
         let r = repo(&mut db);
-        let first = vec![
-            event("ev:a:1", "第一课", 1_000),
-            event("ev:b:2", "第二课", 2_000),
-        ];
-        assert_eq!(r.replace_all(&first).unwrap(), 2);
+        let t1 = 100 * DAY;
 
-        // A second sync with an overlapping-but-different set must fully
-        // replace the projection — no leftovers, no duplicates.
-        let second = vec![
-            event("ev:b:2", "第二课（改）", 2_000),
-            event("ev:c:3", "第三课", 3_000),
+        // Week 1 push: two current events.
+        let week1 = vec![
+            event("ev:a:1", "第一周旧课", t1),
+            event("ev:b:2", "下周同一门课", t1 + 7 * DAY),
         ];
-        assert_eq!(r.replace_all(&second).unwrap(), 2);
+        assert_eq!(r.upsert_events(&week1, t1).unwrap(), 2);
+
+        // Ten days later the next pushes arrive: b is re-pushed with an
+        // updated title (must update in place, not duplicate), c is new, and
+        // a — which ended more than two days before `now` — must be pruned.
+        let week2 = vec![
+            event("ev:b:2", "下周同一门课（时间调整）", t1 + 7 * DAY),
+            event("ev:c:3", "第三周新课", t1 + 14 * DAY),
+        ];
+        assert_eq!(r.upsert_events(&week2, t1 + 10 * DAY).unwrap(), 2);
+
         let all = r.list_all().unwrap();
         assert_eq!(
             all.iter().map(|e| e.external_id.as_str()).collect::<Vec<_>>(),
-            vec!["ev:b:2", "ev:c:3"]
+            vec!["ev:b:2", "ev:c:3"],
+            "merge is a union of pushes minus the stale past"
         );
-        assert_eq!(all[0].title, "第二课（改）");
+        assert_eq!(all[0].title, "下周同一门课（时间调整）");
+    }
+
+    #[test]
+    fn upsert_keeps_events_that_ended_recently() {
+        const DAY: i64 = 86_400_000;
+        let mut db = Database::open_in_memory().unwrap();
+        let r = repo(&mut db);
+        let now = 100 * DAY;
+        // Ended 3 days ago: within the seven-day retention window.
+        let mut recent = event("ev:y:1", "三天前下课", now - 3 * DAY);
+        recent.ends_at = now - 3 * DAY + 3_600_000;
+        // Ended 9 days ago: outside it.
+        let mut stale = event("ev:o:2", "九天前下课", now - 9 * DAY);
+        stale.ends_at = now - 9 * DAY + 3_600_000;
+        r.upsert_events(&[recent, stale], now).unwrap();
+        let all = r.list_all().unwrap();
+        assert_eq!(
+            all.iter().map(|e| e.external_id.as_str()).collect::<Vec<_>>(),
+            vec!["ev:y:1"]
+        );
     }
 
     #[test]
     fn list_all_orders_by_start_time() {
         let mut db = Database::open_in_memory().unwrap();
         let r = repo(&mut db);
-        r.replace_all(&[
-            event("ev:c:3", "晚课", 30_000),
-            event("ev:a:1", "早课", 10_000),
-        ])
+        r.upsert_events(
+            &[
+                event("ev:c:3", "晚课", 30_000),
+                event("ev:a:1", "早课", 10_000),
+            ],
+            100_000,
+        )
         .unwrap();
         let all = r.list_all().unwrap();
         assert_eq!(all[0].title, "早课");
@@ -177,7 +230,8 @@ mod tests {
     fn clear_empties_the_projection() {
         let mut db = Database::open_in_memory().unwrap();
         let r = repo(&mut db);
-        r.replace_all(&[event("ev:a:1", "课", 1_000)]).unwrap();
+        r.upsert_events(&[event("ev:a:1", "课", 1_000)], 100_000)
+            .unwrap();
         assert_eq!(r.clear().unwrap(), 1);
         assert!(r.list_all().unwrap().is_empty());
         assert_eq!(r.clear().unwrap(), 0);

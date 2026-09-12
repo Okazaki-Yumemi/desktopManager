@@ -374,7 +374,10 @@ export async function openSjtuSync(): Promise<"opened" | "navigated"> {
 }
 
 export interface SjtuSyncReport {
+  /** Rows in this push (one week's payload). */
   count: number;
+  /** Cumulative rows pushed in the current sync-window session. */
+  total: number;
   skipped: number;
   syncedAt: number;
 }

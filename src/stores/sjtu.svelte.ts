@@ -79,11 +79,16 @@ export async function clearSjtu(): Promise<void> {
   }
 }
 
-/** Backend event handler: reload the projection, close the loop on `syncing`. */
+/** Backend event handler: reload the projection, close the loop on `syncing`.
+ * A sync session is one push per week (the portal serves a week at a time);
+ * toasts are debounced and always report the session cumulative. */
+let lastToastAt = 0;
+
 export function applySjtuReport(report: SjtuSyncReport): void {
   syncing = false;
-  if (report.count > 0) {
-    pushToast("ok", `交大日程已同步：${report.count} 条`);
+  if (report.total > 0 && Date.now() - lastToastAt > 10_000) {
+    lastToastAt = Date.now();
+    pushToast("ok", `交大日程已同步：累计 ${report.total} 条（含未来数周）`);
   }
   void loadSjtu();
 }

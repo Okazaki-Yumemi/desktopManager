@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-12 (v1.3.0 — Canvas 作业 & DDLs integration; M15).
+> Update after every significant work session. Last updated: 2026-09-12 (v1.3.1 — SJTU multi-week calendar sync fix; M15).
 
 ## Morning handoff (overnight run 2026-09-05 → 2026-09-06) — READ ME FIRST
 
@@ -177,6 +177,11 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
    real sync done (2026-09-12); watch whether real courses/assignments fill
    the list once the semester posts work. Empty list = nothing due in the
    30-day-past/365-day-future window, not a failure (noted on the page).
+5. User verification of the v1.3.1 SJTU multi-week sync (R29): open 交大日程
+   同步 once, log into jAccount, let it finish (window auto-closes ~6s after
+   the last push), then check the calendar page shows NEXT week's classes.
+   The injected script's real-fetch path is TESTED (structure) only until
+   this happens — repo-level merge/prune is unit-tested.
 
 ## Known blockers
 
@@ -184,6 +189,17 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-12 (v1.3.1 SJTU multi-week sync fix, TESTED; WINDOWS_TESTED pending
+  user re-sync): cargo test 69/69 (new: upsert merge/update/prune + 7-day
+  retention tests — the first 2-day retention draft was caught by its own
+  test pruning freshly-pushed last-week rows), clippy 0, svelte-check 0/0,
+  eslint 0, release build exit 0 (MSI 3.8 MB / NSIS 2.8 MB / zip 3.4 MB /
+  exe 7.4 MB). Init script now pushes every distinct calendar response and
+  auto-replays the captured request with date params shifted +7d×k up to
+  8 weeks; backend merges by external_id and prunes >7d-past rows; auto-
+  close debounced 6s after the last push; report carries session-cumulative
+  total.
 
 - 2026-09-12 (v1.3.0 Canvas integration, TESTED/WINDOWS_TESTED/USER_VERIFIED):
   svelte-check 0/0, eslint 0, cargo test 69/69 (new: base-url sanitize, Link

@@ -57,7 +57,7 @@
     <span>快速操作</span>
     <kbd>Ctrl K</kbd>
   </button>
-  <div class="sidebar-footer">v1.3.0 · M15</div>
+  <div class="sidebar-footer">v1.3.1 · M15</div>
 </nav>
 
 <style>
