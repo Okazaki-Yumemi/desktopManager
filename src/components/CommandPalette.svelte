@@ -3,6 +3,7 @@
   import type { Component } from "svelte";
   import {
     CalendarDays,
+    ClipboardList,
     Download,
     Image as ImageIcon,
     LayoutGrid,
@@ -43,6 +44,7 @@
     focus: Timer,
     calendar: CalendarDays,
     tasks: ListTodo,
+    assignments: ClipboardList,
     settings: Settings,
   };
 

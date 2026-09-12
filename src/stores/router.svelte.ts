@@ -1,4 +1,11 @@
-export type PageId = "today" | "desktop" | "focus" | "calendar" | "tasks" | "settings";
+export type PageId =
+  | "today"
+  | "desktop"
+  | "focus"
+  | "calendar"
+  | "tasks"
+  | "assignments"
+  | "settings";
 
 export const PAGES: ReadonlyArray<{ id: PageId; label: string }> = [
   { id: "today", label: "今天" },
@@ -6,6 +13,7 @@ export const PAGES: ReadonlyArray<{ id: PageId; label: string }> = [
   { id: "focus", label: "专注" },
   { id: "calendar", label: "日历" },
   { id: "tasks", label: "任务" },
+  { id: "assignments", label: "作业" },
   { id: "settings", label: "设置" },
 ];
 

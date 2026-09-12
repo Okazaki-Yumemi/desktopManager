@@ -3,6 +3,8 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   AppInfo,
   CalendarEvent,
+  CanvasSnapshot,
+  CanvasProfile,
   Collection,
   DesktopItem,
   FocusDay,
@@ -390,4 +392,30 @@ export async function onSjtuSynced(
  */
 export async function onSjtuWindowClosed(cb: () => void): Promise<() => void> {
   return listen("sjtu-window-closed", () => cb());
+}
+
+// --- Canvas LMS: assignments & deadlines (M15) ------------------------------
+
+/**
+ * Verify a Canvas personal access token by reading the caller's own profile.
+ * Used when saving a token so a typo never lands in settings.
+ */
+export async function canvasTestConnection(
+  base: string,
+  token: string,
+): Promise<CanvasProfile> {
+  return invoke<CanvasProfile>("canvas_test_connection", { base, token });
+}
+
+/** Read-only sync: active courses + due-dated assignments. */
+export async function canvasSync(
+  base: string,
+  token: string,
+): Promise<CanvasSnapshot> {
+  return invoke<CanvasSnapshot>("canvas_sync", { base, token });
+}
+
+/** Open an assignment link in the default browser (same-host https only). */
+export async function canvasOpenLink(base: string, url: string): Promise<void> {
+  await invoke("canvas_open_link", { base, url });
 }

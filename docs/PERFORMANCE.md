@@ -12,7 +12,7 @@ To be recorded with the first release build smoke test:
 | Startup to usable shell (ms)    | —     | cold start, release build            |
 | Idle CPU (%)                    | —     | 60s sample, main window open + tray  |
 | Idle RAM, whole process tree    | —     | DesktopManager.exe + all WebView2 children |
-| Binary size / installer size    | 6.3 MB exe; MSI 3.2 MB; NSIS 2.3 MB; zip 5.2 MB (v1.2.0, M14 feature round).
+| Binary size / installer size    | 7.1 MB exe; MSI 3.8 MB; NSIS 2.8 MB; zip 3.4 MB (v1.3.0, M15 — +1 MB from ureq+rustls for Canvas TLS).
 | Disk writes at idle             | —     | should be ~0 besides log rotation    |
 
 Machine: Windows 11 build 26200, x64 — full specs to be recorded with first

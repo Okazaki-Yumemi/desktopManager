@@ -1,3 +1,36 @@
+## 2026-09-12 — Round 28: Canvas 作业 & DDLs 接入（用户点名）
+
+- **侧栏新页「作业」**（作业 & DDLs，M15）：来自 Canvas（oc.sjtu.edu.cn）
+  的只读同步——用户在 Canvas「账户 → 设置 → 新建访问令牌」自建令牌并
+  亲自粘贴进页面，令牌只落本机 settings 表；后端零凭据留存，全部为
+  官方 REST API 只读 GET（D28）。
+- **Rust 端**（`commands/canvas.rs` + ureq rustls/系统证书栈，阻塞调用
+  走 spawn_blocking）：`canvas_test_connection`（保存前先用 /users/self/
+  profile 验令牌，防手误落库）、`canvas_sync`（active 课程翻 Link 分页
+  ≤5 页 + 每课按 due_at 排序前 100 个作业，含 submission 工作流状态，
+  窗口 [now−30d, now+365d]，无截止不显示；部分课程失败仍返回快照并
+  如实带 skipped_courses，全败才报错）、`canvas_open_link`（仅放行与
+  Canvas 同 host 的 https 链接，复用 ShellExecuteW）。
+- **前端**：`stores/canvas.svelte.ts`（令牌/快照/上次同步经
+  `canvas.token` / `canvas.snapshot` / `canvas.lastSyncAt` 持久化，启动
+  静默刷新一次，快照重启恢复）；`AssignmentsPage.svelte`——连接引导卡、
+  课程色相 chip 筛选、四段分组（已逾期红 / 今天 / 未来 7 天 / 更远）、
+  倒计时（还剩/已逾期，30s 自刷新）、24h 内琥珀高亮、已提交划线可切
+  显隐、ExternalLink 打开原作业页、同步范围诚实脚注。
+- **导航**：PAGES 增 assignments（任务与设置之间），侧栏 ClipboardList
+  图标，Ctrl+1..6 变 1..7，命令面板自动获得「打开：作业」。
+- **验证**：svelte-check 0/0、eslint 0、cargo test 69/69（新增 base 清洗
+  /Link 分页/截止窗口/工作流四组测试）、clippy 0、tauri build exit 0
+  （MSI 3.8 MB / NSIS 2.8 MB / zip 3.4 MB / exe 7.1 MB——ureq+rustls 约
+  +1 MB，如实记录）。`#[ignore]` 活体探针（假令牌打真端点）通过：TLS
+  + 系统证书栈握手正常、401 映射为「令牌无效或已过期」中文提示；curl
+  证实 oc.sjtu.edu.cn 可达。**真实端到端由用户本人完成**：应用内粘贴
+  令牌 → 连接 → 同步落快照（UIA 树可见「上次同步」与空态文案），即
+  canvas_test_connection / canvas_sync / settings 持久化 / 页面渲染全链
+  路在真实令牌下工作。
+- 教训复现：bash heredoc 追加 domain.ts 再次覆盖文件头（本环境已知
+  问题），git checkout 恢复后改用 python 追加——追加一律走 python。
+
 ## 2026-09-12 — Round 27: Ctrl+K 命令面板 + 键盘导航 + v1.2.0 发布
 
 - **命令面板**（Ctrl+K / 侧栏「快速操作」入口）：过滤框（标签中文 +

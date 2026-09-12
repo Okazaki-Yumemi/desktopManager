@@ -1,6 +1,7 @@
 pub mod app_info;
 pub mod background;
 pub mod calendar;
+pub mod canvas;
 pub mod desktop;
 pub mod focus;
 pub mod layout;

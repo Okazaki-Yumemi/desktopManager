@@ -1,7 +1,7 @@
 # STATE
 
 > Hand-off notes so a fresh agent (or human) can continue after context loss.
-> Update after every significant work session. Last updated: 2026-09-12 (v1.2.0 — personalization, wallpaper library, palette, calendar redo; M14).
+> Update after every significant work session. Last updated: 2026-09-12 (v1.3.0 — Canvas 作业 & DDLs integration; M15).
 
 ## Morning handoff (overnight run 2026-09-05 → 2026-09-06) — READ ME FIRST
 
@@ -164,15 +164,19 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
 
 ## Next actions
 
-1. Publish v1.1.0 + v1.2.0 (needs the user's GitHub auth once): artifacts at
-   `src-tauri/target/release/bundle/{msi,nsis}/` plus the matching
-   `DesktopManager_1.x.0_x64.zip` files in `src-tauri/target/release/`.
+1. Publish v1.1.0 + v1.2.0 + v1.3.0 (needs the user's GitHub auth once):
+   artifacts at `src-tauri/target/release/bundle/{msi,nsis}/` plus the
+   matching `DesktopManager_1.x.0_x64.zip` files in `src-tauri/target/release/`.
 2. Fix the v1.0.0 GitHub release: it carries the WRONG MSI
    (`DesktopManager_0.1.0_x64_en-US.msi`) — delete that asset or the
    release; point downloads at the newest tag.
 3. User field test of v1.2.0: mottos/clock styles, wallpaper auto-switch
    (note: applying a library image overwrites the previous background —
    re-add your preferred art once), calendar drag-create/editing.
+4. User field test of v1.3.0 Canvas 作业页: token already connected and one
+   real sync done (2026-09-12); watch whether real courses/assignments fill
+   the list once the semester posts work. Empty list = nothing due in the
+   30-day-past/365-day-future window, not a failure (noted on the page).
 
 ## Known blockers
 
@@ -180,6 +184,19 @@ M5 core **delivered 2026-09-05** (focus: presets 25/5 + 50/10 + custom + count-u
   preference. Node dir G:\nodejs is read-only for shim installs.)
 
 ## Test results log (latest first)
+
+- 2026-09-12 (v1.3.0 Canvas integration, TESTED/WINDOWS_TESTED/USER_VERIFIED):
+  svelte-check 0/0, eslint 0, cargo test 69/69 (new: base-url sanitize, Link
+  pagination parse, due-window boundaries, submission workflow mapping),
+  clippy 0, release build exit 0 (MSI 3.8 MB / NSIS 2.8 MB / zip 3.4 MB /
+  exe 7.1 MB — ureq+rustls +~1 MB, honest cost of no-OpenSSL TLS).
+  `#[ignore]` live probe (bogus token → oc.sjtu.edu.cn) passed: real TLS via
+  the Windows cert store + 401 mapped to the honest Chinese message; curl
+  confirms the host is reachable. **The user then connected a real token in
+  the running app and one real sync landed** (UIA tree shows 上次同步
+  timestamp + honest empty state) — canvas_test_connection → canvas_sync →
+  settings persistence → page render all exercised with real credentials
+  handled solely by the user.
 
 - 2026-09-12 (v1.2.0 feature round R24–R27, TESTED/WINDOWS_TESTED):
   svelte-check 0/0, eslint 0, cargo test 64/64 (new lib-name validator

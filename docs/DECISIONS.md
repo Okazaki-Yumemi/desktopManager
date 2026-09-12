@@ -397,3 +397,21 @@ the page scrolls to the current hour minus two. The week time-grid uses
 pointer events on one div rather than 168 buttons (keyboard access is
 carried by the focusable event blocks and the panel); SJTU entries remain
 read-only everywhere.
+
+## D28 — Canvas 走官方 API + 令牌只进本机；快照整体替换（2026-09-12, M15/R28）
+
+**决定**：作业/DDL 数据不爬 HTML，用 Canvas 官方 REST API + 用户自建
+个人访问令牌（Bearer）。令牌由用户在页面上亲自粘贴，保存前先调
+/users/self/profile 验证，之后只落在本地 settings 表（与 jAccount 纪律
+同源：凭据永不经过 agent、永不离开本机）；后端命令无状态、每次调用
+由前端传令牌，进程内不留副本。同步是纯只读 GET；快照整体替换写入
+`canvas.snapshot`（缓存数据，非用户创作，可随时重建）。
+
+**支撑性取舍**：①每课程取按 due_at 排序的前 100 条（窗口
+[now−30d, now+365d]，无截止不显示）——DDL 页要的是"最近要交的"，不是
+全量归档，页脚如实注明范围；②部分课程拉取失败仍交付其余课程并在
+快照里带 skipped_courses，全部失败才报错——最大化可用信息且不谎报；
+③打开作业链接的命令只放行与 Canvas 同 host 的 https URL（防快照被
+注入任意 URL 后当跳板）；④HTTP 用 ureq（阻塞）+ rustls + Windows 系统
+证书栈，spawn_blocking 包裹——校园网/企业自定义根证书下也能握手，
+代价是 +1 MB 二进制，换稳定与免 OpenSSL 构建地狱，值得。

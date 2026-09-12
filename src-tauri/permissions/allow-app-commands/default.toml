@@ -65,4 +65,7 @@ commands.allow = [
   "sjtu_list",
   "sjtu_clear",
   "sjtu_open_sync",
+  "canvas_test_connection",
+  "canvas_sync",
+  "canvas_open_link",
 ]

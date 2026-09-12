@@ -155,3 +155,14 @@ panel). No server, no telemetry — every new artifact stays in the local
 app-data directory. v1.2.0.
 
 > **Status: delivered and WINDOWS_TESTED 2026-09-12** — see ITERATION_LOG R24–R27 and DECISIONS D26/D27.
+
+## M15 — Canvas 作业 & DDLs（added 2026-09-12, user request）
+
+接入 oc.sjtu.edu.cn（Canvas LMS）：侧栏新增独立「作业」页，经官方
+REST API 只读拉取 active 课程与作业截止时间。用户自建个人访问令牌并
+亲自粘贴，令牌只存本机 settings 表；快照缓存于本地，启动静默刷新、
+手动随时同步。列表按已逾期/今天/未来 7 天/更远分组倒计时，支持课程
+筛选、已提交显隐、一键跳转 Canvas 原页。不爬 HTML——不稳定且越权；
+不用爬虫术语里的任何模拟登录。v1.3.0。
+
+> **Status: delivered 2026-09-12 (TESTED/WINDOWS_TESTED)** — gates 全绿（69 Rust 测试、clippy 0、svelte-check 0/0、eslint 0、release 构建成功）；假令牌活体探针验证 TLS/401 路径；真实令牌端到端同步由用户本人在应用内完成。DDL 数据丰富度取决于课程是否发布作业——空列表属正常态而非故障（页面已注明统计范围）。

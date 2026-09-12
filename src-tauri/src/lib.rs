@@ -144,6 +144,9 @@ pub fn run() {
             commands::sjtu::sjtu_list,
             commands::sjtu::sjtu_clear,
             commands::sjtu::sjtu_open_sync,
+            commands::canvas::canvas_test_connection,
+            commands::canvas::canvas_sync,
+            commands::canvas::canvas_open_link,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

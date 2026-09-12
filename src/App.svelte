@@ -7,8 +7,9 @@
   import DesktopPage from "./pages/DesktopPage.svelte";
   import FocusPage from "./pages/FocusPage.svelte";
   import CalendarPage from "./pages/CalendarPage.svelte";
-  import TasksPage from "./pages/TasksPage.svelte";
-  import SettingsPage from "./pages/SettingsPage.svelte";
+import TasksPage from "./pages/TasksPage.svelte";
+import AssignmentsPage from "./pages/AssignmentsPage.svelte";
+import SettingsPage from "./pages/SettingsPage.svelte";
   import { currentPage, navigate, PAGES, type PageId } from "./stores/router.svelte";
   import { palette, togglePalette } from "./stores/palette.svelte";
   import {
@@ -22,8 +23,9 @@
     surfacePref,
     watchSystemTheme,
   } from "./stores/theme.svelte";
-  import { loadSoundPreference } from "./lib/chime.svelte";
-  import { initWallpaper, startWallpaperRotation, wallpaper } from "./stores/wallpaper.svelte";
+import { loadSoundPreference } from "./lib/chime.svelte";
+import { initWallpaper, startWallpaperRotation, wallpaper } from "./stores/wallpaper.svelte";
+import { loadCanvasState } from "./stores/canvas.svelte";
 
   const page = $derived(currentPage());
 
@@ -67,6 +69,7 @@
     void loadCustomAccent();
     void iconSizePref.load();
     void initWallpaper();
+    void loadCanvasState();
     const stopWallpaperRotation = startWallpaperRotation();
     const unlistenTheme = watchSystemTheme();
     return () => {
@@ -97,6 +100,8 @@
       <CalendarPage />
     {:else if page === "tasks"}
       <TasksPage />
+    {:else if page === "assignments"}
+      <AssignmentsPage />
     {:else if page === "settings"}
       <SettingsPage />
     {/if}

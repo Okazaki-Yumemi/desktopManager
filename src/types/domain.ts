@@ -166,3 +166,37 @@ export interface SjtuEvent {
   calendarId: string | null;
   syncedAt: number;
 }
+
+/// One Canvas course (mirrors commands::canvas::CanvasCourse).
+export interface CanvasCourse {
+  id: number;
+  name: string;
+}
+
+/// One due-dated Canvas assignment (mirrors commands::canvas::CanvasAssignment).
+/// Read-only projection; every sync replaces the whole snapshot.
+export interface CanvasAssignment {
+  id: number;
+  courseId: number;
+  name: string;
+  /** Epoch ms; assignments without a due date are never listed. */
+  dueAt: number;
+  htmlUrl: string;
+  pointsPossible: number | null;
+  submitted: boolean;
+}
+
+/// Result of one Canvas sync (mirrors commands::canvas::CanvasSnapshot).
+export interface CanvasSnapshot {
+  fetchedAt: number;
+  courses: CanvasCourse[];
+  assignments: CanvasAssignment[];
+  /** Courses whose assignment fetch failed mid-sync. */
+  skippedCourses: number;
+}
+
+/// Canvas caller profile (mirrors commands::canvas::CanvasProfile).
+export interface CanvasProfile {
+  name: string;
+  loginId: string | null;
+}
